@@ -38,6 +38,9 @@ urlpatterns = [
     path('produccion/', include('produccion.urls')),
 
     path('ventas/', include('ventas.urls')),
+
+    # Rutas de la aplicación Recetas
+    path('recetas/', include('recetas.urls')),
 ]
 
 # ESTA PARTE PERMITE QUE DJANGO SIRVA LAS IMÁGENES DE LA CARPETA MEDIA
