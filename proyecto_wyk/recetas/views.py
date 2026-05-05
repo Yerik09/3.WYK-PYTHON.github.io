@@ -30,7 +30,7 @@ def crear_receta(request):
     """ Registra una nueva receta con su detalle de insumos (Maestro-Detalle) """
     if request.user.rol_fk_usuario.rol != 'ADMIN':
         messages.error(request, "Acceso denegado. Solo el administrador puede crear recetas.")
-        return redirect('recetas:lista_recetas')
+        return redirect('lista_recetas')
 
     productos = Producto.objects.filter(estado_producto=True)
     materias_primas = MateriaPrima.objects.filter(estado_materia_prima=True)
@@ -53,7 +53,7 @@ def crear_receta(request):
                     formset.save()
 
                     messages.success(request, f"Receta '{nueva_receta.nombre_receta}' creada exitosamente.")
-                    return redirect('recetas:lista_recetas')
+                    return redirect('lista_recetas')
             except Exception as e:
                 messages.error(request, f"Error en base de datos: {str(e)}")
         else:
@@ -80,7 +80,7 @@ def editar_receta(request, id_receta):
     """ Edita una receta existente y sus insumos asociados """
     if request.user.rol_fk_usuario.rol != 'ADMIN':
         messages.error(request, "Acceso denegado.")
-        return redirect('recetas:lista_recetas')
+        return redirect('lista_recetas')
 
     receta = get_object_or_404(Receta, id_receta=id_receta)
 
@@ -94,7 +94,7 @@ def editar_receta(request, id_receta):
                     form.save()
                     formset.save()
                     messages.success(request, f"Receta '{receta.nombre_receta}' actualizada correctamente.")
-                    return redirect('recetas:lista_recetas')
+                    return redirect('lista_recetas')
             except Exception as e:
                 messages.error(request, f"Error al actualizar: {str(e)}")
     else:
