@@ -98,6 +98,13 @@
                     <i class="fa fa-industry"></i>
                     <span>Control Producción</span>
                 </a>
+
+                <div class="nav-section">RECETAS</div>
+
+                <a href="{% url 'lista_recetas' %}" class="nav-item {% if 'recetas' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fa fa-utensils"></i>
+                    <span>Libro de Recetas</span>
+                </a>
                 {% endif %}
 
                 {# Acceso permitido para ADMIN, CAJERO y MESERO #}

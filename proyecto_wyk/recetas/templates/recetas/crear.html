@@ -1,10 +1,293 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load static %}
 
-</body>
-</html>
+{% block title %}Nueva Receta Maestra - WYK{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-formularios-crear-mov.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-formularios.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-tablas.css' %}">
+
+    <style>
+        .unit-subtitle { font-size: 0.7rem; color: rgba(255, 255, 255, 0.5); text-transform: lowercase; display: block; margin-top: 2px; }
+        .fila-seleccionable { cursor: pointer; transition: 0.3s; }
+        .fila-seleccionable:hover { background: rgba(245, 166, 35, 0.1) !important; }
+
+        .modal-body {
+            max-height: 450px;
+            overflow-y: auto !important;
+            padding: 0 !important;
+        }
+
+        .input-item-readonly {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: var(--dorado-wyk) !important;
+            border: 1px solid rgba(245, 166, 35, 0.2) !important;
+            cursor: default;
+            font-weight: 600;
+            padding: 8px !important;
+        }
+
+        .tabla-insumos select {
+            display: none !important;
+        }
+
+        .tabla-insumos input:not(.input-item-readonly) {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: white !important;
+            border: 1px solid rgba(245, 166, 35, 0.3) !important;
+            padding: 8px !important;
+            width: 100%;
+            border-radius: 4px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="compra-container">
+    <a href="{% url 'lista_recetas' %}" class="volver" style="color: var(--dorado-wyk); text-decoration: none; display: inline-block; margin-bottom: 15px;">
+        <i class="fas fa-arrow-left"></i> Volver al Libro de Recetas
+    </a>
+
+    <h2 class="titulo-seccion"><i class="fas fa-scroll"></i> Registrar Nueva Receta Maestra</h2>
+
+    <form method="post" id="formNuevaReceta">
+        {% csrf_token %}
+        <input type="hidden" name="estado_receta" value="True">
+
+        <div class="form-card-wyk">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label><i class="fas fa-signature"></i> Nombre de la Receta</label>
+                    {{ form.nombre_receta }}
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-cookie"></i> Producto Final Vinculado</label>
+                    <div class="role-selector-group">
+                        <input type="text" id="prod_display" class="form-control" placeholder="Seleccionar producto..." readonly required>
+                        <input type="hidden" name="id_producto_fk_receta" id="id_prod_hidden">
+                        <button type="button" class="btn-search-wyk" data-bs-toggle="modal" data-bs-target="#modalProductos">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-balance-scale"></i> Cantidad Base (Rendimiento)</label>
+                    {{ form.cantidad_base }}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label><i class="fas fa-align-left"></i> Descripción / Instrucciones</label>
+                {{ form.descripcion_receta }}
+            </div>
+        </div>
+
+        <div class="productos-card">
+            <button type="button" class="btn-add-item" onclick="abrirModalMateria()">
+                <i class="fas fa-plus"></i> Añadir Ingrediente
+            </button>
+            <h3 style="margin-bottom: 20px;">Ingredientes de la Receta</h3>
+
+            <div class="table-wrap">
+                {{ formset.management_form }}
+                <table class="tabla-insumos" id="tabla-ingredientes">
+                    <thead>
+                        <tr>
+                            <th>Insumo</th>
+                            <th style="width: 250px;">Cantidad Requerida</th>
+                            <th style="width: 80px;" class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+
+                <template id="empty-row-ingrediente">
+                    <tr>
+                        <td>
+                            <input type="text" class="form-control input-item-readonly" readonly>
+                            <div style="display: none;">
+                                {{ formset.empty_form.id_materia_prima_fk_det_rec }}
+                            </div>
+                        </td>
+                        <td>
+                            {{ formset.empty_form.cantidad_insumo_base }}
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn-eliminar-fila" onclick="eliminarFila(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button type="button" class="btn-guardar-wyk" onclick="confirmarGuardado()">
+                <i class="fas fa-check-circle"></i> Guardar Receta
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="modal fade modal-wyk-custom" id="modalProductos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-wyk">
+                <h5 class="modal-title text-gold"><i class="fas fa-cookie me-2"></i> Seleccionar Producto Final</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table-wyk mb-0" id="tablaSelectorProd">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;" class="text-center">ID</th>
+                            <th>NOMBRE PRODUCTO</th>
+                            <th class="text-center">STOCK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pr in productos %}
+                        <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}">
+                            <td class="text-center text-gold">#{{ pr.id_producto }}</td>
+                            <td class="text-white">{{ pr.nombre_producto }}</td>
+                            <td class="text-center"><span class="badge-nivel">{{ pr.cant_exist_producto }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade modal-wyk-custom" id="modalMateriaPrima" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-wyk">
+                <h5 class="modal-title text-gold"><i class="fas fa-leaf me-2"></i> Seleccionar Insumo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table-wyk mb-0" id="tablaSelectorMateria">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;" class="text-center">ID</th>
+                            <th>NOMBRE DEL INSUMO</th>
+                            <th class="text-center">STOCK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in materias_primas %}
+                        <tr class="fila-seleccionable" data-id="{{ m.id_materia_prima }}" data-nombre="{{ m.nombre_materia_prima }}" data-unidad="{{ m.presentacion_mat_prima }}">
+                            <td class="text-center text-gold">#{{ m.id_materia_prima }}</td>
+                            <td class="text-white">{{ m.nombre_materia_prima }}</td>
+                            <td class="text-center"><span class="badge-nivel">{{ m.cantidad_exist_mat_prima|floatformat:"-3" }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
+
+    /* SELECCIÓN PRODUCTO FINAL */
+    document.querySelectorAll('#tablaSelectorProd tbody tr').forEach(fila => {
+        fila.addEventListener('click', function() {
+            document.getElementById('id_prod_hidden').value = this.dataset.id;
+            document.getElementById('prod_display').value = this.dataset.nombre;
+            bootstrap.Modal.getInstance(document.getElementById('modalProductos')).hide();
+        });
+    });
+
+    /* SELECCIÓN MATERIA PRIMA */
+    function abrirModalMateria() {
+        new bootstrap.Modal(document.getElementById('modalMateriaPrima')).show();
+    }
+
+    document.querySelectorAll('#tablaSelectorMateria tbody tr').forEach(fila => {
+        fila.addEventListener('click', function() {
+            agregarFilaIngrediente(this.dataset.id, this.dataset.nombre, this.dataset.unidad);
+            bootstrap.Modal.getInstance(document.getElementById('modalMateriaPrima')).hide();
+        });
+    });
+
+    function agregarFilaIngrediente(item_id, nombre, unidad) {
+        // El prefijo debe ser el mismo que en views.py
+        const totalFormsInput = document.getElementById('id_insumos_receta-TOTAL_FORMS');
+        const totalForms = parseInt(totalFormsInput.value);
+
+        const template = document.getElementById('empty-row-ingrediente').content.cloneNode(true);
+        const tr = template.querySelector('tr');
+
+        tr.innerHTML = tr.innerHTML.replace(/__prefix__/g, totalForms);
+        const tbody = document.querySelector('#tabla-ingredientes tbody');
+        tbody.appendChild(tr);
+
+        const nuevaFila = tbody.lastElementChild;
+
+        // 1. Mostrar nombre
+        nuevaFila.querySelector('.input-item-readonly').value = nombre;
+
+        // 2. Asignar ID al select (usando el nombre correcto del modelo)
+        const selectItem = nuevaFila.querySelector('select[name*="id_materia_prima_fk_det_rec"]');
+        if(selectItem) selectItem.value = item_id;
+
+        // 3. HABILITAR INPUT DE CANTIDAD (Rectificado con el nombre del modelo)
+        const inputCantidad = nuevaFila.querySelector('input[name*="cantidad_insumo_base"]');
+        if(inputCantidad) {
+            inputCantidad.removeAttribute('readonly');
+            inputCantidad.removeAttribute('disabled');
+            inputCantidad.style.pointerEvents = 'auto';
+            inputCantidad.required = true;
+
+            // Añadir unidad visualmente
+            const spanUnidad = document.createElement('span');
+            spanUnidad.className = 'unit-subtitle';
+            spanUnidad.innerText = unidad ? unidad.toLowerCase() : 'und';
+            inputCantidad.parentNode.appendChild(spanUnidad);
+        }
+
+        totalFormsInput.value = totalForms + 1;
+    }
+
+    function eliminarFila(btn) {
+        btn.closest('tr').remove();
+        // Nota: En una implementación completa deberías actualizar el TOTAL_FORMS,
+        // pero para crear una nueva receta desde cero así funciona bien.
+    }
+
+    function confirmarGuardado() {
+        const nombre = document.querySelector('input[name="nombre_receta"]').value;
+        const producto = document.getElementById('id_prod_hidden').value;
+        const filas = document.querySelectorAll('#tabla-ingredientes tbody tr').length;
+
+        if (!nombre || !producto || filas === 0) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Atención', text: 'Completa el nombre, el producto y añade al menos un ingrediente.'});
+            return;
+        }
+
+        Swal.fire({
+            ...swalConfig,
+            title: '¿Guardar Receta?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, guardar'
+        }).then((result) => {
+            if (result.isConfirmed) document.getElementById('formNuevaReceta').submit();
+        });
+    }
+</script>
+{% endblock %}
