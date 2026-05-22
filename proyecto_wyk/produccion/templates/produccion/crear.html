@@ -13,63 +13,19 @@
         .fila-seleccionable { cursor: pointer; transition: 0.3s; }
         .fila-seleccionable:hover { background: rgba(245, 166, 35, 0.1) !important; }
 
-        .modal-body {
-            max-height: 450px;
-            overflow-y: auto !important;
-            padding: 0 !important;
-        }
+        .modal-body { max-height: 450px; overflow-y: auto !important; padding: 0 !important; }
 
-        input[name="cant_produccion"] {
-            pointer-events: auto !important;
-            cursor: text !important;
-            background: rgba(255, 255, 255, 0.05) !important;
-        }
+        input[name="cant_produccion"] { pointer-events: auto !important; cursor: text !important; background: rgba(255, 255, 255, 0.05) !important; }
 
-        .tabla-insumos input {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: white !important;
-            border: 1px solid rgba(245, 166, 35, 0.3) !important;
-            padding: 8px !important;
-            width: 100%;
-        }
+        .tabla-insumos input { background: rgba(255, 255, 255, 0.05) !important; color: white !important; border: 1px solid rgba(245, 166, 35, 0.3) !important; padding: 8px !important; width: 100%; }
 
-        .stock-insuficiente {
-            border: 1px solid #ff8a8a !important;
-            background: rgba(255, 138, 138, 0.1) !important;
-            box-shadow: 0 0 5px rgba(255, 138, 138, 0.5);
-        }
+        .stock-insuficiente { border: 1px solid #ff8a8a !important; background: rgba(255, 138, 138, 0.1) !important; box-shadow: 0 0 5px rgba(255, 138, 138, 0.5); }
 
-        .tabla-insumos select {
-            pointer-events: none;
-            background: rgba(0,0,0,0.2) !important;
-            border: none;
-            color: #f5a623;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-        }
+        .tabla-insumos select { pointer-events: none; background: rgba(0,0,0,0.2) !important; border: none; color: #f5a623; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
 
-        .form-select-wyk {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: white !important;
-            border: 1px solid rgba(245, 166, 35, 0.3) !important;
-            padding: 10px !important;
-            width: 100%;
-            border-radius: 8px;
-            outline: none;
-        }
-
-        .form-select-wyk:disabled {
-            background: rgba(255, 255, 255, 0.02) !important;
-            color: #f5a623 !important;
-            opacity: 0.8;
-            cursor: not-allowed;
-        }
-
-        .form-select-wyk option {
-            background: #1a0a00;
-            color: white;
-        }
+        .form-select-wyk { background: rgba(255, 255, 255, 0.05) !important; color: white !important; border: 1px solid rgba(245, 166, 35, 0.3) !important; padding: 10px !important; width: 100%; border-radius: 8px; outline: none; }
+        .form-select-wyk:disabled { background: rgba(255, 255, 255, 0.02) !important; color: #f5a623 !important; opacity: 0.8; cursor: not-allowed; }
+        .form-select-wyk option { background: #1a0a00; color: white; }
     </style>
 {% endblock %}
 
@@ -83,8 +39,8 @@
 
     <form method="post" id="formNuevaProduccion">
         {% csrf_token %}
-
         <input type="hidden" name="estado_produccion" value="PENDIENTE">
+        <input type="hidden" name="id_receta_fk_produccion" id="id_receta_hidden">
 
         <div class="form-card-wyk">
             <div class="form-grid">
@@ -118,7 +74,6 @@
                             <option value="PASTELERIA">Pastelería</option>
                         </select>
                     {% else %}
-                        {# Para Panaderos y Pasteleros se muestra bloqueado y se envía por un hidden #}
                         <select class="form-select-wyk" disabled>
                             <option value="PANADERIA" {% if rol_usuario == 'PANADERO' %}selected{% endif %}>Panadería</option>
                             <option value="PASTELERIA" {% if rol_usuario == 'PASTELERO' %}selected{% endif %}>Pastelería</option>
@@ -150,8 +105,7 @@
                             <th style="width: 80px;" class="text-center">Acción</th>
                         </tr>
                     </thead>
-                    <tbody>
-                    </tbody>
+                    <tbody></tbody>
                 </table>
 
                 <template id="empty-row-insumo">
@@ -283,61 +237,56 @@
 
     document.querySelectorAll('#tablaSelectorProdFinal tbody tr').forEach(fila => {
         fila.addEventListener('click', function() {
-            document.getElementById('id_prod_final_hidden').value = this.getAttribute('data-id');
-            document.getElementById('prod_final_display').value = this.getAttribute('data-nombre');
+            const idProd = this.getAttribute('data-id');
+            const nombreProd = this.getAttribute('data-nombre');
+
+            document.getElementById('id_prod_final_hidden').value = idProd;
+            document.getElementById('prod_final_display').value = nombreProd;
+
+            // Consultar receta
+            fetch(`{% url 'obtener_receta_por_producto' %}?id_producto=${idProd}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('id_receta_hidden').value = data.id_receta;
+                    document.querySelector('#tabla-insumos tbody').innerHTML = '';
+                    document.getElementById('id_insumos_set-TOTAL_FORMS').value = 0;
+                    data.insumos.forEach(i => agregarFilaInsumo(i.id_materia, i.stock, i.cantidad));
+                } else {
+                    Swal.fire({...swalConfig, icon: 'info', title: 'Receta no encontrada', text: data.message});
+                }
+            });
             bootstrap.Modal.getInstance(document.getElementById('modalProductosFinales')).hide();
         });
     });
 
-    function abrirModalInsumo() {
-        new bootstrap.Modal(document.getElementById('modalMateriaPrima')).show();
-    }
+    function abrirModalInsumo() { new bootstrap.Modal(document.getElementById('modalMateriaPrima')).show(); }
 
-    function agregarFilaInsumo(item_id, item_stock) {
+    function agregarFilaInsumo(item_id, item_stock, cant = '') {
         const totalFormsInput = document.getElementById('id_insumos_set-TOTAL_FORMS');
         const totalForms = parseInt(totalFormsInput.value);
         const template = document.getElementById('empty-row-insumo');
-
         const content = template.content.cloneNode(true);
         const tr = content.querySelector('tr');
-
         tr.innerHTML = tr.innerHTML.replace(/__prefix__/g, totalForms);
-
         const tbody = document.querySelector('#tabla-insumos tbody');
         tbody.appendChild(tr);
-
         const select = tbody.lastElementChild.querySelector('select');
         const inputCant = tbody.lastElementChild.querySelector('input[name*="cantidad_requerida"]');
-
         select.value = item_id;
+        inputCant.value = cant;
         inputCant.setAttribute('data-stock-max', item_stock);
-
-        inputCant.addEventListener('input', function() {
-            validarStockFila(this);
-        });
-
+        inputCant.addEventListener('input', function() { validarStockFila(this); });
         totalFormsInput.value = totalForms + 1;
     }
 
     function validarStockFila(input) {
         const stockMax = parseFloat(input.getAttribute('data-stock-max'));
         const valorIngresado = parseFloat(input.value);
-
         if (valorIngresado > stockMax) {
             input.classList.add('stock-insuficiente');
-            Swal.fire({
-                ...swalConfig,
-                icon: 'warning',
-                title: 'Stock Insuficiente',
-                text: `Solo tienes ${stockMax} disponibles.`,
-                toast: true,
-                position: 'top-end',
-                timer: 3000,
-                showConfirmButton: false
-            });
-        } else {
-            input.classList.remove('stock-insuficiente');
-        }
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Stock Insuficiente', text: `Solo tienes ${stockMax} disponibles.`, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});
+        } else { input.classList.remove('stock-insuficiente'); }
     }
 
     document.querySelectorAll('#tablaSelectorMateria tbody tr').forEach(fila => {
@@ -349,48 +298,28 @@
 
     function eliminarFila(btn) {
         btn.closest('tr').remove();
-        const totalFormsInput = document.getElementById('id_insumos_set-TOTAL_FORMS');
-        totalFormsInput.value = document.querySelectorAll('#tabla-insumos tbody tr').length;
+        document.getElementById('id_insumos_set-TOTAL_FORMS').value = document.querySelectorAll('#tabla-insumos tbody tr').length;
     }
 
     function confirmarGuardado() {
         const producto = document.getElementById('id_prod_final_hidden').value;
         const nombreLote = document.querySelector('input[name="nombre_produccion"]').value;
         const cantidad = document.querySelector('input[name="cant_produccion"]').value;
-        // Obtenemos la categoría del select (si es admin) o del hidden (si es otro rol)
         const categoria = document.querySelector('[name="categoria_produccion"]').value;
         const filasInsumos = document.querySelectorAll('#tabla-insumos tbody tr').length;
 
-        const erroresStock = document.querySelectorAll('.stock-insuficiente').length;
-
-        if (erroresStock > 0) {
-            Swal.fire({...swalConfig, icon: 'error', title: 'Error de Inventario', text: 'Hay insumos que superan el stock disponible. Corrige las cantidades en rojo.'});
+        if (document.querySelectorAll('.stock-insuficiente').length > 0) {
+            Swal.fire({...swalConfig, icon: 'error', title: 'Error de Inventario', text: 'Hay insumos que superan el stock disponible.'});
             return;
         }
 
-        if (!producto || !nombreLote || !cantidad || !categoria) {
-            Swal.fire({...swalConfig, icon: 'warning', title: 'Campos Incompletos', text: 'Revisa el nombre, el producto, la cantidad y la categoría.'});
+        if (!producto || !nombreLote || !cantidad || !categoria || filasInsumos === 0) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Campos Incompletos', text: 'Revisa todos los campos y asegúrate de añadir insumos.'});
             return;
         }
 
-        if (filasInsumos === 0) {
-            Swal.fire({...swalConfig, icon: 'warning', title: 'Sin Insumos', text: 'Debes añadir al menos una materia prima.'});
-            return;
-        }
-
-        Swal.fire({
-            ...swalConfig,
-            title: '¿Registrar Orden?',
-            text: "Se guardará la orden de producción.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, registrar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                setTimeout(() => {
-                    document.getElementById('formNuevaProduccion').submit();
-                }, 100);
-            }
+        Swal.fire({...swalConfig, title: '¿Registrar Orden?', text: "Se guardará la orden de producción.", icon: 'question', showCancelButton: true, confirmButtonText: 'Sí, registrar'}).then((result) => {
+            if (result.isConfirmed) document.getElementById('formNuevaProduccion').submit();
         });
     }
 </script>

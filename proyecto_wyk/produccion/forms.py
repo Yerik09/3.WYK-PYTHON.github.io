@@ -9,6 +9,7 @@ class ProduccionForm(forms.ModelForm):
         fields = [
             'nombre_produccion',
             'id_producto_fk_produccion',
+            'id_receta_fk_produccion',
             'categoria_produccion',
             'cant_produccion',
             'descripcion_produccion',
@@ -24,6 +25,7 @@ class ProduccionForm(forms.ModelForm):
                 'class': 'input-wyk select-item',
                 'required': True
             }),
+            'id_receta_fk_produccion': forms.HiddenInput(),
             'categoria_produccion': forms.TextInput(attrs={
                 'placeholder': 'Ej: Panadería / Pastelería',
                 'class': 'input-wyk',

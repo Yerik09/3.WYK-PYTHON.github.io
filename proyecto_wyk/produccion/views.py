@@ -9,6 +9,7 @@ import json
 from .models import Produccion, DetalleProduccion
 from inventario.models import MateriaPrima, Producto
 from .forms import ProduccionForm, InsumosProduccionFormSet
+from recetas.models import Receta
 
 
 # ------------------------------ GESTIÓN DE PRODUCCIÓN (CRUD) ------------------------------
@@ -138,6 +139,34 @@ def detalle_produccion(request, id_produccion):
 
 
 # ------------------------------ ACCIONES AJAX (ESTADOS Y STOCK) ------------------------------
+
+@login_required
+def obtener_receta_por_producto(request):
+    """ Busca la receta activa vinculada a un producto para cargar los insumos automáticamente """
+    id_producto = request.GET.get('id_producto')
+    receta = Receta.objects.filter(id_producto_fk_receta=id_producto, estado_receta=True).first()
+
+    if not receta:
+        return JsonResponse({'success': False, 'message': 'No se encontró una receta activa para este producto.'})
+
+    # Usamos el related_name 'insumos_receta' definido en el modelo DetalleReceta
+    detalles = receta.insumos_receta.all()
+    insumos = [
+        {
+            'id_materia': d.id_materia_prima_fk_det_rec.id_materia_prima,
+            'nombre': d.id_materia_prima_fk_det_rec.nombre_materia_prima,
+            'cantidad': float(d.cantidad_insumo_base),
+            'stock': float(d.id_materia_prima_fk_det_rec.cantidad_exist_mat_prima)
+        }
+        for d in detalles
+    ]
+
+    return JsonResponse({
+        'success': True,
+        'id_receta': receta.id_receta,
+        'insumos': insumos
+    })
+
 
 @login_required
 def finalizar_produccion_ajax(request):

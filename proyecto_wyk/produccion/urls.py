@@ -16,4 +16,7 @@ urlpatterns = [
     # Rutas para finalizar o cancelar órdenes de producción con validación
     path('finalizar-ajax/', views.finalizar_produccion_ajax, name='finalizar_produccion_ajax'),
     path('cancelar-ajax/', views.cancelar_produccion_ajax, name='cancelar_produccion_ajax'),
+
+    # Ruta para obtener receta de producto
+    path('obtener-receta-por-producto/', views.obtener_receta_por_producto, name='obtener_receta_por_producto'),
 ]
