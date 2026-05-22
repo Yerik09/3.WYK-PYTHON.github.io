@@ -77,7 +77,8 @@ def crear_receta(request):
         'form': form,
         'formset': formset,
         'productos': productos,
-        'materias_primas': materias_primas
+        'materias_primas': materias_primas,
+        'nombres_recetas': list(Receta.objects.values_list('nombre_receta', flat=True))
     })
 
 

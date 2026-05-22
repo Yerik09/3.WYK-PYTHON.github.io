@@ -29,8 +29,8 @@ class RecetaForm(forms.ModelForm):
             'cantidad_base': forms.NumberInput(attrs={
                 'placeholder': 'Cantidad entera (ej: 10)',
                 'class': 'input-wyk',
-                'step': '1',    # Solo permite números enteros
-                'min': '1',     # Mínimo 1 para asegurar valor positivo
+                'step': '1',  # Solo permite números enteros
+                'min': '1',  # Mínimo 1 para asegurar valor positivo
                 'required': True
             }),
             'descripcion_receta': forms.Textarea(attrs={
@@ -46,6 +46,11 @@ class RecetaForm(forms.ModelForm):
 
     def clean_nombre_receta(self):
         nombre = self.cleaned_data.get('nombre_receta').strip().upper()
+
+        # Validar duplicados ignorando mayúsculas/minúsculas
+        if Receta.objects.filter(nombre_receta__iexact=nombre).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("Ya existe una receta registrada con este nombre.")
+
         return nombre
 
 

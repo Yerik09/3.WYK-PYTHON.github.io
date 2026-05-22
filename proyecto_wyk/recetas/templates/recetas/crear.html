@@ -205,6 +205,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
+    // Lista de nombres existentes inyectada desde Django
+    const nombresExistentes = {{ nombres_recetas|safe|default:"[]" }};
 
     /* VALIDACIÓN DE LONGITUD PARA NOMBRE Y DESCRIPCIÓN */
     const inputNombre = document.querySelector('input[name="nombre_receta"]');
@@ -347,18 +349,26 @@
     }
 
     function confirmarGuardado() {
-        const nombre = document.querySelector('input[name="nombre_receta"]').value;
+        const nombreInput = document.querySelector('input[name="nombre_receta"]');
+        const nombreVal = nombreInput.value.trim();
         const producto = document.getElementById('id_prod_hidden').value;
         const inputBase = document.querySelector('input[name="cantidad_base"]');
         const valorBase = inputBase ? inputBase.value.trim() : '';
         const filas = document.querySelectorAll('#tabla-ingredientes tbody tr');
 
-        if (nombre.trim().length < 3) {
+        // Validación nombre mínimo
+        if (nombreVal.length < 3) {
             Swal.fire({...swalConfig, icon: 'warning', title: 'Nombre muy corto', text: 'El nombre debe tener al menos 3 caracteres.'});
             return;
         }
 
-        if (!nombre || !producto || filas.length === 0) {
+        // Validación nombre duplicado (JS)
+        if (nombresExistentes.some(n => n.toLowerCase() === nombreVal.toLowerCase())) {
+            Swal.fire({...swalConfig, icon: 'error', title: 'Nombre duplicado', text: 'Ya existe una receta con este nombre.'});
+            return;
+        }
+
+        if (!nombreVal || !producto || filas.length === 0) {
             Swal.fire({...swalConfig, icon: 'warning', title: 'Atención', text: 'Completa el nombre, el producto y añade al menos un ingrediente.'});
             return;
         }

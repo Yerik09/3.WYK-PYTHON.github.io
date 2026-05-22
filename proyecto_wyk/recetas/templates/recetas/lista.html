@@ -176,6 +176,22 @@
         allowOutsideClick: false
     };
 
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mostrar mensajes de Django como SweetAlert
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    ...swalWykConfig,
+                    icon: '{{ message.tags }}' === 'error' ? 'error' : 'success',
+                    title: '{{ message.tags|upper }}',
+                    text: '{{ message }}',
+                    timer: 3500,
+                    timerProgressBar: true
+                });
+            {% endfor %}
+        {% endif %}
+    });
+
     // Buscador en tiempo real
     function filtrarTodo() {
         const texto = document.getElementById('inputBusqueda').value.toLowerCase();
