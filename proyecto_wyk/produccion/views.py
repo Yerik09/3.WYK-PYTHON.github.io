@@ -156,7 +156,8 @@ def obtener_receta_por_producto(request):
             'id_materia': d.id_materia_prima_fk_det_rec.id_materia_prima,
             'nombre': d.id_materia_prima_fk_det_rec.nombre_materia_prima,
             'cantidad': float(d.cantidad_insumo_base),
-            'stock': float(d.id_materia_prima_fk_det_rec.cantidad_exist_mat_prima)
+            'stock': float(d.id_materia_prima_fk_det_rec.cantidad_exist_mat_prima),
+            'unidad': d.id_materia_prima_fk_det_rec.presentacion_mat_prima.lower()
         }
         for d in detalles
     ]

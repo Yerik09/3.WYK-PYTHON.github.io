@@ -26,6 +26,9 @@
         .form-select-wyk { background: rgba(255, 255, 255, 0.05) !important; color: white !important; border: 1px solid rgba(245, 166, 35, 0.3) !important; padding: 10px !important; width: 100%; border-radius: 8px; outline: none; }
         .form-select-wyk:disabled { background: rgba(255, 255, 255, 0.02) !important; color: #f5a623 !important; opacity: 0.8; cursor: not-allowed; }
         .form-select-wyk option { background: #1a0a00; color: white; }
+
+        /* Estilos para la unidad */
+        .input-unidad-wrapper { display: flex; flex-direction: column; align-items: flex-start; }
     </style>
 {% endblock %}
 
@@ -54,7 +57,7 @@
                     <div class="role-selector-group">
                         <input type="text" id="prod_final_display" class="form-control" placeholder="Seleccionar producto..." readonly required>
                         <input type="hidden" name="id_producto_fk_produccion" id="id_prod_final_hidden">
-                        <button type="button" class="btn-search-wyk" data-bs-toggle="modal" data-bs-target="#modalProductosFinales">
+                        <button type="button" class="btn-search-wyk" onclick="filtrarProductosPorCategoria()" data-bs-toggle="modal" data-bs-target="#modalProductosFinales">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
@@ -156,7 +159,7 @@
                     </thead>
                     <tbody>
                         {% for pr in productos %}
-                        <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}">
+                        <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}" data-tipo="{{ pr.tipo_producto }}">
                             <td class="text-center text-gold">#{{ pr.id_producto }}</td>
                             <td class="text-white">{{ pr.nombre_producto }}</td>
                             <td class="text-center">
@@ -235,6 +238,18 @@
     setupSearch('busquedaProdFinal', 'tablaSelectorProdFinal');
     setupSearch('busquedaMat', 'tablaSelectorMateria');
 
+    function filtrarProductosPorCategoria() {
+        const catSelect = document.querySelector('select[name="categoria_produccion"]');
+        const catHidden = document.querySelector('input[name="categoria_produccion"]');
+        const categoriaActual = catSelect ? catSelect.value : (catHidden ? catHidden.value : '');
+
+        const filas = document.querySelectorAll('#tablaSelectorProdFinal tbody tr');
+        filas.forEach(fila => {
+            const tipoProducto = fila.getAttribute('data-tipo');
+            fila.style.display = (tipoProducto === categoriaActual) ? "" : "none";
+        });
+    }
+
     document.querySelectorAll('#tablaSelectorProdFinal tbody tr').forEach(fila => {
         fila.addEventListener('click', function() {
             const idProd = this.getAttribute('data-id');
@@ -259,21 +274,37 @@
         });
     });
 
-    document.querySelector('input[name="cant_produccion"]').addEventListener('input', function() {
+    // Validación Cantidad a Producir
+    const inputCantProd = document.querySelector('input[name="cant_produccion"]');
+    inputCantProd.addEventListener('input', function() {
+        if (this.value.length > 8) this.value = this.value.slice(0, 8);
+        if (this.value !== "" && parseFloat(this.value) <= 0) this.value = '';
+
         const nuevaCant = parseFloat(this.value) || 0;
         document.querySelectorAll('#tabla-insumos tbody tr').forEach(fila => {
             const input = fila.querySelector('input[name*="cantidad_requerida"]');
             const proporcion = parseFloat(input.getAttribute('data-proporcion'));
             if (!isNaN(proporcion)) {
-                input.value = (proporcion * nuevaCant).toFixed(3);
+                input.value = nuevaCant > 0 ? (proporcion * nuevaCant).toFixed(3) : '0.000';
                 validarStockFila(input);
             }
         });
+    });
+    inputCantProd.addEventListener('keydown', function(e) {
+        if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
     });
 
     function abrirModalInsumo() { new bootstrap.Modal(document.getElementById('modalMateriaPrima')).show(); }
 
     function agregarFilaInsumo(item_id, item_stock, cant = '', base_receta = 1, unidad = 'unidades') {
+        const selects = document.querySelectorAll('#tabla-insumos select[name*="id_materia_prima_fk_det_produc"]');
+        for (let s of selects) {
+            if (s.value == item_id) {
+                Swal.fire({...swalConfig, icon: 'error', title: 'Insumo Duplicado', text: 'Este insumo ya se encuentra en la lista.', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});
+                return;
+            }
+        }
+
         const totalFormsInput = document.getElementById('id_insumos_set-TOTAL_FORMS');
         const totalForms = parseInt(totalFormsInput.value);
         const template = document.getElementById('empty-row-insumo');
@@ -284,11 +315,33 @@
         tbody.appendChild(tr);
 
         const select = tbody.lastElementChild.querySelector('select');
-        const inputCant = tbody.lastElementChild.querySelector('input[name*="cantidad_requerida"]');
+        const tdCant = tbody.lastElementChild.querySelector('td:nth-child(2)');
+        const inputCant = tdCant.querySelector('input[name*="cantidad_requerida"]');
+
         select.value = item_id;
+
+        // Agregar unidad visualmente con la clase .unit-subtitle
+        tdCant.classList.add('input-unidad-wrapper');
+        const spanUnidad = document.createElement('span');
+        spanUnidad.className = 'unit-subtitle';
+        spanUnidad.innerText = unidad;
+        tdCant.appendChild(spanUnidad);
 
         inputCant.setAttribute('data-stock-max', item_stock);
         inputCant.setAttribute('data-unidad', unidad);
+        inputCant.setAttribute('maxlength', '8');
+
+        inputCant.addEventListener('keydown', function(e) {
+            if (e.key === '-' || e.key === 'e') e.preventDefault();
+            if (this.value.length >= 8 && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== '.') e.preventDefault();
+        });
+
+        inputCant.addEventListener('input', function() {
+            if (this.value !== "" && parseFloat(this.value) <= 0) {
+                this.value = '';
+            }
+            validarStockFila(this);
+        });
 
         const proporcion = cant / base_receta;
         inputCant.setAttribute('data-proporcion', proporcion);
@@ -296,7 +349,6 @@
         const cantidadProduccion = document.querySelector('input[name="cant_produccion"]').value || 1;
         inputCant.value = (proporcion * cantidadProduccion).toFixed(3);
 
-        inputCant.addEventListener('input', function() { validarStockFila(this); });
         totalFormsInput.value = totalForms + 1;
     }
 
@@ -308,7 +360,6 @@
         const selectElement = input.closest('tr').querySelector('select');
         const nombreInsumo = selectElement.options[selectElement.selectedIndex].text;
 
-        // Aquí el mensaje usa la unidad que viene exactamente de tu base de datos
         if (valorIngresado > stockMax) {
             input.classList.add('stock-insuficiente');
             Swal.fire({
@@ -343,14 +394,22 @@
         const nombreLote = document.querySelector('input[name="nombre_produccion"]').value;
         const cantidad = document.querySelector('input[name="cant_produccion"]').value;
         const categoria = document.querySelector('[name="categoria_produccion"]').value;
-        const filasInsumos = document.querySelectorAll('#tabla-insumos tbody tr').length;
+        const filasInsumos = document.querySelectorAll('#tabla-insumos tbody tr');
 
         if (document.querySelectorAll('.stock-insuficiente').length > 0) {
             Swal.fire({...swalConfig, icon: 'error', title: 'Error de Inventario', text: 'Hay insumos que superan el stock disponible.'});
             return;
         }
 
-        if (!producto || !nombreLote || !cantidad || !categoria || filasInsumos === 0) {
+        for(let fila of filasInsumos) {
+            let input = fila.querySelector('input[name*="cantidad_requerida"]');
+            if(!input.value || parseFloat(input.value) <= 0) {
+                Swal.fire({...swalConfig, icon: 'warning', title: 'Cantidad Inválida', text: 'Todos los insumos deben tener una cantidad mayor a cero.'});
+                return;
+            }
+        }
+
+        if (!producto || !nombreLote || !cantidad || !categoria || filasInsumos.length === 0) {
             Swal.fire({...swalConfig, icon: 'warning', title: 'Campos Incompletos', text: 'Revisa todos los campos y asegúrate de añadir insumos.'});
             return;
         }

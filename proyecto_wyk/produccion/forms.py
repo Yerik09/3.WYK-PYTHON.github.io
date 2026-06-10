@@ -1,6 +1,8 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.core.exceptions import ValidationError
 from .models import Produccion, DetalleProduccion
+
 
 # --------------------------------- FORMULARIO PRODUCCIÓN ---------------------------------
 class ProduccionForm(forms.ModelForm):
@@ -52,12 +54,47 @@ class ProduccionForm(forms.ModelForm):
         nombre = self.cleaned_data.get('nombre_produccion').strip().upper()
         return nombre
 
+
+# --------------------------------- CLASE DE VALIDACIÓN PARA FORMSET ---------------------------------
+
+class BaseInsumosProduccionFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        """ Valida que no se repita una materia prima y que las cantidades sean mayores a cero """
+        super().clean()
+
+        if any(self.errors):
+            return
+
+        ingredientes = []
+        for form in self.forms:
+            # Ignoramos formularios que están vacíos o marcados para eliminación
+            if self.can_delete and self._should_delete_form(form):
+                continue
+            if not form.cleaned_data:
+                continue
+
+            # --- Validación de cantidad positiva ---
+            cantidad = form.cleaned_data.get('cantidad_requerida')
+            if cantidad is not None and cantidad <= 0:
+                raise ValidationError("La cantidad requerida debe ser mayor a cero.")
+
+            # --- Validación de duplicados ---
+            materia_prima = form.cleaned_data.get('id_materia_prima_fk_det_produc')
+            if materia_prima:
+                if materia_prima.id_materia_prima in ingredientes:
+                    raise ValidationError(
+                        f"El insumo '{materia_prima.nombre_materia_prima}' ya fue agregado. No puedes ponerlo más de una vez."
+                    )
+                ingredientes.append(materia_prima.id_materia_prima)
+
+
 # --------------------------------- FORMSET DE INSUMOS ---------------------------------
 
 # Este FormSet permite agregar múltiples materias primas (insumos) a una sola producción
 InsumosProduccionFormSet = inlineformset_factory(
     Produccion,
     DetalleProduccion,
+    formset=BaseInsumosProduccionFormSet,
     fields=[
         'id_materia_prima_fk_det_produc',
         'cantidad_requerida'
@@ -75,6 +112,6 @@ InsumosProduccionFormSet = inlineformset_factory(
             'required': True
         }),
     },
-    extra=0, # Usamos 0 para manejar la adición de filas dinámicamente con JavaScript
+    extra=0,  # Usamos 0 para manejar la adición de filas dinámicamente con JavaScript
     can_delete=True
 )
