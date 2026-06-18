@@ -201,7 +201,7 @@
                 <tr>
                     <td style="font-weight: 700; color: #fff;">{{ d.id_materia_prima_fk_det_produc.nombre_materia_prima }}</td>
                     <td style="text-align: center; font-weight: 800; color: var(--oro-brillante); font-size: 1.1rem;">
-                        {{ d.cantidad_requerida }}
+                        {{ d.cantidad_requerida|stringformat:"g" }} {{ d.id_materia_prima_fk_det_produc.presentacion_mat_prima|lower }}
                     </td>
                 </tr>
                 {% empty %}

@@ -229,8 +229,12 @@
 <script>
     const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
 
-    function formatVisual(val) { return parseFloat(parseFloat(val).toFixed(3)); }
+    // Función para mostrar solo decimales necesarios (1.000 -> 1)
+    function formatVisual(val) {
+        return parseFloat(parseFloat(val).toFixed(3));
+    }
 
+    // Configuración contadores
     const fieldNombre = document.querySelector('input[name="nombre_produccion"]');
     const fieldDesc = document.querySelector('textarea[name="descripcion_produccion"]');
 
@@ -293,25 +297,24 @@
         });
     });
 
-    // Validación Cantidad a Producir (Solo enteros)
+    // Validación Cantidad a Producir
     const inputCantProd = document.querySelector('input[name="cant_produccion"]');
     inputCantProd.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9]/g, ''); // Solo permite números
         if (this.value.length > 8) this.value = this.value.slice(0, 8);
-        if (this.value !== "" && parseInt(this.value) <= 0) this.value = '';
+        if (this.value !== "" && parseFloat(this.value) <= 0) this.value = '';
 
-        const nuevaCant = parseInt(this.value) || 0;
+        const nuevaCant = parseFloat(this.value) || 0;
         document.querySelectorAll('#tabla-insumos tbody tr').forEach(fila => {
             const input = fila.querySelector('input[name*="cantidad_requerida"]');
             const proporcion = parseFloat(input.getAttribute('data-proporcion'));
             if (!isNaN(proporcion)) {
-                input.value = nuevaCant > 0 ? formatVisual(proporcion * nuevaCant) : '0.000';
+                input.value = nuevaCant > 0 ? formatVisual(proporcion * nuevaCant) : '';
                 validarStockFila(input);
             }
         });
     });
     inputCantProd.addEventListener('keydown', function(e) {
-        if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
+        if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
     });
 
     function abrirModalInsumo() { new bootstrap.Modal(document.getElementById('modalMateriaPrima')).show(); }
