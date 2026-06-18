@@ -50,6 +50,15 @@
             pointer-events: none; /* Bloqueamos el select para que usen el modal */
             background: rgba(0,0,0,0.2) !important;
         }
+
+        /* Estilo para el contador de caracteres */
+        .contador-caracteres {
+            text-align: right;
+            font-size: 0.85rem;
+            color: #f5a623;
+            margin-top: 5px;
+            font-family: monospace;
+        }
     </style>
 {% endblock %}
 
@@ -97,6 +106,7 @@
             <div class="form-group">
                 <label><i class="fas fa-align-left"></i> Notas de la Compra</label>
                 {{ form.descripcion_compra }}
+                <div class="contador-caracteres"><span id="num-contador">0</span> / 200</div>
             </div>
         </div>
 
@@ -300,6 +310,25 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
+
+    /* CONFIGURACIÓN Y CONTADOR PARA EL TEXTAREA DE DJANGO */
+    document.addEventListener("DOMContentLoaded", function() {
+        // Buscamos el textarea generado por Django mediante su atributo name estándar
+        const txtArea = document.querySelector('textarea[name="descripcion_compra"]');
+        const contador = document.getElementById('num-contador');
+
+        if (txtArea && contador) {
+            txtArea.setAttribute('maxlength', '200'); // Evita físicamente escribir más
+
+            // Listener para actualizar el contador visual en tiempo real
+            txtArea.addEventListener('input', function() {
+                contador.innerText = this.value.length;
+            });
+
+            // Inicialización por si viene con texto previo
+            contador.innerText = txtArea.value.length;
+        }
+    });
 
     /* BUSCADORES MODALES */
     function setupSearch(inputId, tableId) {
