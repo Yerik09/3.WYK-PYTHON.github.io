@@ -13,7 +13,7 @@ pip install python-dotenv==1.2.2
 
 
 Comandos:
-python manage.py makemigrations usuarios inventario compras ventas produccion
+python manage.py makemigrations usuarios inventario compras ventas produccion recetas
 
 python manage.py migrate usuarios --fake
 
