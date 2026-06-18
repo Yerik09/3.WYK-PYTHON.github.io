@@ -89,6 +89,42 @@
             min-height: 80px;
             resize: none;
         }
+
+        /* --- CONTENEDOR PARA PREFIJO MONETARIO (CORREGIDO) --- */
+        .input-money-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .input-money-container .money-prefix {
+            position: absolute;
+            left: 18px; /* Ajustado para centrar bien el signo */
+            color: var(--primary-wyk);
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Forzamos un padding izquierdo mayor usando !important para evitar solapamientos */
+        .input-money-container .input-wyk {
+            padding-left: 35px !important;
+        }
+
+        /* --- ESTILOS PARA EL CONTADOR DE CARACTERES --- */
+        .char-counter-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .char-counter {
+            font-size: 0.75rem;
+            color: #f5a623;
+            opacity: 0.8;
+        }
     </style>
 {% endblock %}
 
@@ -129,14 +165,17 @@
 
                         <div class="form-group-wyk col-md-6">
                             <label class="form-label-wyk">Precio Unitario ($)</label>
-                            <input type="number" name="valor_unitario_product" id="id_precio" class="input-wyk"
-                                   placeholder="0" value="{{ request.POST.valor_unitario_product|default:'' }}" required>
+                            <div class="input-money-container">
+                                <span class="money-prefix">$</span>
+                                <input type="text" name="valor_unitario_product" id="id_precio" class="input-wyk"
+                                       placeholder="0" value="{{ request.POST.valor_unitario_product|default:'' }}" required>
+                            </div>
                         </div>
 
                         <div class="form-group-wyk col-md-6">
                             <label class="form-label-wyk">Cantidad Inicial (Stock)</label>
                             <input type="number" name="cant_exist_producto" id="id_stock" class="input-wyk"
-                                   placeholder="0" value="{{ request.POST.cant_exist_producto|default:'' }}" required>
+                                   placeholder="0" min="0" oninput="this.value = this.value.replace(/[-.,eE]/g, '')" value="{{ request.POST.cant_exist_producto|default:'' }}" required>
                         </div>
 
                         <div class="form-group-wyk col-md-6">
@@ -158,7 +197,10 @@
                         <div class="form-group-wyk col-md-12">
                             <label class="form-label-wyk">Descripción del Producto (Opcional)</label>
                             <textarea name="descripcion_producto" id="id_descripcion" class="input-wyk textarea-wyk"
-                                      placeholder="Breve detalle del producto...">{{ request.POST.descripcion_producto|default:'' }}</textarea>
+                                      placeholder="Breve detalle del producto..." maxlength="200">{{ request.POST.descripcion_producto|default:'' }}</textarea>
+                            <div class="char-counter-container">
+                                <span id="contador_descripcion" class="char-counter">0 / 200</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -240,6 +282,11 @@
         heightAuto: false
     };
 
+    // Función auxiliar para aplicar formato de miles (Ej: 15000 -> 15.000)
+    function formatNumber(value) {
+        return value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         {% if messages %}
             {% for message in messages %}
@@ -251,6 +298,88 @@
                 });
             {% endfor %}
         {% endif %}
+
+        const inputIdProducto = document.getElementById('id_id_producto');
+        const inputPrecio = document.getElementById('id_precio');
+        const inputStock = document.getElementById('id_stock');
+        const inputDescripcion = document.getElementById('id_descripcion');
+        const contadorDesc = document.getElementById('contador_descripcion');
+        const inputFechaVenc = document.getElementById('id_fecha_venc');
+
+        // --- RESTRICCIÓN PREVENTIVA EN EL CALENDARIO NATIVO (MÍNIMO MAÑANA) ---
+        if (inputFechaVenc) {
+            const hoy = new Date();
+            // Mañana es hoy + 1 día
+            const mañana = new Date(hoy);
+            mañana.setDate(hoy.getDate() + 1);
+
+            const yyyy = mañana.getFullYear();
+            const mm = String(mañana.getMonth() + 1).padStart(2, '0');
+            const dd = String(mañana.getDate()).padStart(2, '0');
+
+            const fechaMinimaStr = `${yyyy}-${mm}-${dd}`;
+            inputFechaVenc.setAttribute('min', fechaMinimaStr);
+        }
+
+        // --- MANEJO EN TIEMPO REAL DEL CÓDIGO / ID (EVITAR SIGNOS Y DECIMALES) ---
+        if (inputIdProducto) {
+            inputIdProducto.addEventListener('keydown', function(e) {
+                if (e.key === '-' || e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                    e.preventDefault();
+                }
+            });
+
+            inputIdProducto.addEventListener('input', function() {
+                this.value = this.value.replace(/[-.,eE]/g, '');
+            });
+        }
+
+        // --- MANEJO EN TIEMPO REAL DEL PRECIO (SEPARADOR DE MILES) ---
+        if (inputPrecio) {
+            if(inputPrecio.value) {
+                inputPrecio.value = formatNumber(inputPrecio.value);
+            }
+
+            inputPrecio.addEventListener('keydown', function(e) {
+                const allowedKeys = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete'];
+                if (!allowedKeys.includes(e.key) && isNaN(Number(e.key))) {
+                    e.preventDefault();
+                }
+            });
+
+            inputPrecio.addEventListener('input', function() {
+                this.value = formatNumber(this.value);
+            });
+        }
+
+        // --- MANEJO EN TIEMPO REAL DEL STOCK ---
+        if (inputStock) {
+            inputStock.addEventListener('keydown', function(e) {
+                if (e.key === '-' || e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                    e.preventDefault();
+                }
+            });
+
+            inputStock.addEventListener('input', function() {
+                this.value = this.value.replace(/[-.,eE]/g, '');
+                if (parseInt(this.value) < 0) {
+                    this.value = 0;
+                }
+            });
+        }
+
+        // --- CONTADOR DINÁMICO DE CARACTERES EN LA DESCRIPCIÓN ---
+        if (inputDescripcion && contadorDesc) {
+            const actualizarContador = () => {
+                const longitud = inputDescripcion.value.length;
+                contadorDesc.textContent = `${longitud} / 200`;
+            };
+
+            // Ejecución inicial por si ya viene texto cargado
+            actualizarContador();
+
+            inputDescripcion.addEventListener('input', actualizarContador);
+        }
     });
 
     function previewImage(input) {
@@ -278,15 +407,54 @@
     function confirmarRegistroProducto() {
         const id = document.getElementById('id_id_producto').value.trim();
         const nombre = document.getElementById('id_nombre_producto').value.trim();
-        const precio = document.getElementById('id_precio').value;
+        const inputPrecio = document.getElementById('id_precio');
+        const stock = document.getElementById('id_stock').value;
         const tipo = document.getElementById('id_tipo').value;
+        const fechaVencVal = document.getElementById('id_fecha_venc').value;
 
-        if (!id || !nombre || !precio || !tipo) {
+        const precioLimpio = inputPrecio.value.replace(/\./g, "");
+
+        if (!id || !nombre || !precioLimpio || !stock || !tipo || !fechaVencVal) {
             Swal.fire({
                 ...swalConfig,
                 icon: 'warning',
                 title: 'Campos incompletos',
                 text: 'Por favor, llena los campos obligatorios del producto.'
+            });
+            return;
+        }
+
+        // --- VALIDACIÓN LOGICA DE LA FECHA DE VENCIMIENTO ---
+        const fechaSeleccionada = new Date(fechaVencVal + 'T00:00:00');
+        const fechaHoy = new Date();
+        fechaHoy.setHours(0, 0, 0, 0); // Limpiar horas para comparar puramente las fechas
+
+        if (fechaSeleccionada <= fechaHoy) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Fecha inválida',
+                text: 'La fecha de vencimiento debe ser estrictamente posterior al día de hoy.'
+            });
+            return;
+        }
+
+        if (parseInt(precioLimpio) <= 0) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Precio inválido',
+                text: 'El Precio Unitario debe ser estrictamente mayor a 0.'
+            });
+            return;
+        }
+
+        if (parseInt(stock) < 0) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Stock inválido',
+                text: 'La cantidad inicial no puede ser un número negativo.'
             });
             return;
         }
@@ -301,6 +469,7 @@
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
+                inputPrecio.value = precioLimpio;
                 document.getElementById('formCrearProducto').submit();
             }
         });
