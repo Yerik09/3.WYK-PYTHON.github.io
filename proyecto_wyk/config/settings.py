@@ -81,23 +81,30 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        engine='django.db.backends.postgresql'  # <-- Con la "q" al final
-    )
-}
-
 # Si estás en tu PC local (donde no existe DATABASE_URL), usará tus variables del .env
-if not os.environ.get('DATABASE_URL'):
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.postgresql',  # <-- Con la "q" al final
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+# Database
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
+if os.environ.get('DATABASE_URL'):
+    # Configuración para producción (Railway)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            engine='django.db.backends.postgresql'
+        )
+    }
+else:
+    # Configuración para tu PC local (XAMPP / PostgreSQL local)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME'),
+            'USER': os.getenv('DB_USER'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
+            'HOST': os.getenv('DB_HOST'),
+            'PORT': os.getenv('DB_PORT'),
+        }
     }
 
 AUTH_USER_MODEL = 'usuarios.Usuario'
