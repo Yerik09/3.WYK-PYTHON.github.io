@@ -98,12 +98,20 @@ def editar_receta(request, id_receta):
         if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
-                    form.save()
+                    receta_editada = form.save()
+                    formset.instance = receta_editada
                     formset.save()
                     messages.success(request, f"Receta '{receta.nombre_receta}' actualizada correctamente.")
                     return redirect('lista_recetas')
             except Exception as e:
                 messages.error(request, f"Error al actualizar: {str(e)}")
+        else:
+            # Captura exhaustiva de errores añadida para romper el fallo silencioso en edición
+            for error in form.non_field_errors(): messages.error(request, error)
+            for field in form:
+                for error in field.errors: messages.error(request, f"{field.label}: {error}")
+            for dict_error in formset.errors:
+                for field, error in dict_error.items(): messages.error(request, f"Detalle: {error}")
     else:
         form = RecetaForm(instance=receta)
         formset = DetalleRecetaFormSet(instance=receta, prefix='insumos_receta')

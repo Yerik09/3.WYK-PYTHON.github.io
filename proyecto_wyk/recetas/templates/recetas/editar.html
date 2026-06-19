@@ -1,10 +1,282 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load static %}
 
-</body>
-</html>
+{% block title %}Editar Receta - {{ receta.nombre_receta }}{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-formularios-crear-mov.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-formularios.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-tablas.css' %}">
+
+    <style>
+        .unit-subtitle { font-size: 0.7rem; color: rgba(255, 255, 255, 0.5); text-transform: lowercase; display: block; margin-top: 2px; }
+        .char-counter { font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); text-align: right; margin-top: 4px; }
+        .fila-seleccionable { cursor: pointer; transition: 0.3s; }
+        .fila-seleccionable:hover { background: rgba(245, 166, 35, 0.1) !important; }
+
+        .modal-body {
+            max-height: 450px;
+            overflow-y: auto !important;
+            padding: 0 !important;
+        }
+
+        .input-item-readonly {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: var(--dorado-wyk) !important;
+            border: 1px solid rgba(245, 166, 35, 0.2) !important;
+            cursor: default;
+            font-weight: 600;
+            padding: 8px !important;
+        }
+
+        .tabla-insumos select {
+            display: none !important;
+        }
+
+        .tabla-insumos input:not(.input-item-readonly) {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: white !important;
+            border: 1px solid rgba(245, 166, 35, 0.3) !important;
+            padding: 8px !important;
+            width: 100%;
+            border-radius: 4px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="compra-container">
+    <a href="{% url 'lista_recetas' %}" class="volver" style="color: var(--dorado-wyk); text-decoration: none; display: inline-block; margin-bottom: 15px;">
+        <i class="fas fa-arrow-left"></i> Volver al Libro de Recetas
+    </a>
+
+    <h2 class="titulo-seccion"><i class="fas fa-edit"></i> Editar Receta: {{ receta.nombre_receta }}</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert" style="background-color: rgba(220, 53, 69, 0.2); color: #ff8585; border: 1px solid rgba(220, 53, 69, 0.4); margin-bottom: 20px; padding: 15px; border-radius: 4px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" id="formEditarReceta">
+        {% csrf_token %}
+        <div class="form-card-wyk">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label><i class="fas fa-signature"></i> Nombre de la Receta</label>
+                    {{ form.nombre_receta }}
+                    <div id="counter-nombre" class="char-counter">0 / 100</div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-cookie"></i> Producto Final Vinculado</label>
+                    <div class="role-selector-group">
+                        <div style="display: none;">{{ form.id_producto_fk_receta }}</div>
+                        <input type="text" id="prod_display" class="form-control input-item-readonly" value="{{ receta.id_producto_fk_receta.nombre_producto }}" readonly required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-balance-scale"></i> Cantidad Base (Rendimiento)</label>
+                    {{ form.cantidad_base }}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+                <label><i class="fas fa-align-left"></i> Descripción / Instrucciones</label>
+                {{ form.descripcion_receta }}
+                <div id="counter-desc" class="char-counter">0 / 255</div>
+            </div>
+            <div style="display: none;">{{ form.estado_receta }}</div>
+        </div>
+
+        <div class="productos-card">
+            <h3 style="margin-bottom: 20px;">Ingredientes de la Receta</h3>
+
+            <div class="table-wrap">
+                {{ formset.management_form }}
+                <table class="tabla-insumos" id="tabla-ingredientes">
+                    <thead>
+                        <tr>
+                            <th>Insumo</th>
+                            <th style="width: 250px;">Cantidad Requerida</th>
+                            <th style="width: 80px;" class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in formset %}
+                        <tr>
+                            <div style="display: none;">
+                                {% for hidden in f.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                            </div>
+                            <td>
+                                <input type="text" class="form-control input-item-readonly" value="{{ f.instance.id_materia_prima_fk_det_rec.nombre_materia_prima }}" readonly>
+                                <div style="display: none;">
+                                    {{ f.id_materia_prima_fk_det_rec }}
+                                </div>
+                            </td>
+                            <td>
+                                {{ f.cantidad_insumo_base }}
+                                <span class="unit-subtitle">{{ f.instance.id_materia_prima_fk_det_rec.presentacion_mat_prima|lower }}</span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn-eliminar-fila" onclick="eliminarFilaEditar(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button type="button" class="btn-guardar-wyk" onclick="confirmarEdicion()">
+                <i class="fas fa-check-circle"></i> Guardar Cambios
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+<script>
+    const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
+
+    // Lista de nombres existentes inyectada desde Django (calcado de crear)
+    const nombresExistentes = {{ nombres_recetas|safe|default:"[]" }};
+    // Guardamos el nombre original de esta receta en específico para permitir que conserve su propio nombre al editar
+    const nombreOriginalReceta = "{{ receta.nombre_receta|escapejs }}".toLowerCase();
+
+    /* VALIDACIÓN DE LONGITUD PARA NOMBRE Y DESCRIPCIÓN */
+    const inputNombre = document.querySelector('input[name="nombre_receta"]');
+    const inputDesc = document.querySelector('textarea[name="descripcion_receta"]');
+    const counterNombre = document.getElementById('counter-nombre');
+    const counterDesc = document.getElementById('counter-desc');
+
+    if (inputNombre) {
+        counterNombre.innerText = `${inputNombre.value.length} / 100`;
+        inputNombre.addEventListener('input', function() {
+            if (this.value.length > 100) this.value = this.value.slice(0, 100);
+            counterNombre.innerText = `${this.value.length} / 100`;
+        });
+    }
+
+    if (inputDesc) {
+        counterDesc.innerText = `${inputDesc.value.length} / 255`;
+        inputDesc.addEventListener('input', function() {
+            if (this.value.length > 255) this.value = this.value.slice(0, 255);
+            counterDesc.innerText = `${this.value.length} / 255`;
+        });
+    }
+
+    /* VALIDACIONES EN TIEMPO REAL: CANTIDAD BASE (RENDIMIENTO) - SOLO ENTEROS */
+    const inputCantidadBase = document.querySelector('input[name="cantidad_base"]');
+    if (inputCantidadBase) {
+        inputCantidadBase.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value.length > 8) this.value = this.value.slice(0, 8);
+        });
+    }
+
+    /* APLICAR VALIDACIONES A LOS INPUTS DE CANTIDAD EXISTENTES */
+    document.querySelectorAll('#tabla-ingredientes tbody tr').forEach(fila => {
+        const inputCantidad = fila.querySelector('input[name*="cantidad_insumo_base"]');
+        if (inputCantidad) {
+            inputCantidad.addEventListener('input', function() {
+                if (this.value.includes('-')) this.value = this.value.replace(/-/g, '');
+                if (parseFloat(this.value) < 0) this.value = '';
+                const maxCaracteres = 8;
+                if (this.value.length > maxCaracteres) this.value = this.value.slice(0, maxCaracteres);
+            });
+        }
+    });
+
+    /* MANEJO DE ELIMINACIÓN DE FILAS EN EDICIÓN */
+    function eliminarFilaEditar(btn) {
+        const fila = btn.closest('tr');
+        const checkboxDelete = fila.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (checkboxDelete) {
+            checkboxDelete.checked = true;
+            fila.style.display = 'none';
+        } else {
+            fila.remove();
+        }
+    }
+
+    /* CONFIRMACIÓN DE GUARDADO CON SWEETALERT (CALCADO DE CREAR + CONTROL DE NOMBRE PROPIO) */
+    function confirmarEdicion() {
+        const nombreInput = document.querySelector('input[name="nombre_receta"]');
+        const nombreVal = nombreInput ? nombreInput.value.trim() : '';
+        const inputBase = document.querySelector('input[name="cantidad_base"]');
+        const valorBase = inputBase ? inputBase.value.trim() : '';
+        const filas = document.querySelectorAll('#tabla-ingredientes tbody tr');
+
+        // Validación nombre mínimo (calcado de crear)
+        if (!nombreVal || nombreVal.length < 3) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Nombre muy corto', text: 'El nombre debe tener al menos 3 caracteres.'});
+            return;
+        }
+
+        // Validación nombre duplicado (Solo alerta si cambia el nombre y coincide con OTRA receta del sistema)
+        if (nombreVal.toLowerCase() !== nombreOriginalReceta && nombresExistentes.some(n => n.toLowerCase() === nombreVal.toLowerCase())) {
+            Swal.fire({...swalConfig, icon: 'error', title: 'Nombre duplicado', text: 'Ya existe otra receta con este nombre.'});
+            return;
+        }
+
+        let filasVisibles = 0;
+        let cantidadesValidas = true;
+        let mensajeError = '';
+
+        for (let i = 0; i < filas.length; i++) {
+            if (filas[i].style.display === 'none') continue;
+            filasVisibles++;
+
+            const inputCantidad = filas[i].querySelector('input[name*="cantidad_insumo_base"]');
+            const nombreInsumo = filas[i].querySelector('.input-item-readonly').value;
+            const valor = inputCantidad ? inputCantidad.value.trim() : '';
+
+            if (valor === '' || parseFloat(valor) <= 0) {
+                cantidadesValidas = false;
+                mensajeError = `La cantidad para el ingrediente <b class="text-gold">${nombreInsumo}</b> debe ser estrictamente mayor a 0.`;
+                break;
+            }
+        }
+
+        if (filasVisibles === 0) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Atención', text: 'La receta debe poseer al menos un ingrediente activo.'});
+            return;
+        }
+
+        if (valorBase === '' || parseInt(valorBase) <= 0) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Cantidad Base Inválida', text: 'La Cantidad Base (Rendimiento) debe ser un número entero mayor a 0.'});
+            return;
+        }
+
+        if (!cantidadesValidas) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Cantidad Inválida', html: mensajeError});
+            return;
+        }
+
+        Swal.fire({
+            ...swalConfig,
+            title: '¿Actualizar Receta?',
+            text: 'Se aplicarán las modificaciones realizadas sobre esta receta maestra.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, guardar cambios',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('formEditarReceta').submit();
+            }
+        });
+    }
+</script>
+{% endblock %}
