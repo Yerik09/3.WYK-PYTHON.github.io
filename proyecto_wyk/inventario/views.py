@@ -432,40 +432,6 @@ def crear_ajuste_mat_prima(request):
     materias = MateriaPrima.objects.filter(estado_materia_prima=True)
     return render(request, 'inventario/ajuste_mat/crear.html', {'materias': materias})
 
-
-@login_required
-def editar_ajuste_mat_prima(request, id_ajust_mat):
-    if request.user.rol_fk_usuario.rol != 'ADMIN':
-        messages.error(request, "Acceso denegado.")
-        return redirect('lista_ajustes_mat_prima')
-
-    ajuste = get_object_or_404(AjusteInventarioMatPrima, id_ajust_mat=id_ajust_mat)
-    materia = ajuste.id_mat_fk_ajuste_mat
-
-    form = AjusteMatPrimaForm(request.POST or None, instance=ajuste, materia=materia)
-
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    ajuste_editado = form.save(commit=False)
-                    valor_anterior = AjusteInventarioMatPrima.objects.get(pk=id_ajust_mat).cantidad_ajustada_mat
-                    materia.cantidad_exist_mat_prima += valor_anterior
-                    materia.cantidad_exist_mat_prima -= ajuste_editado.cantidad_ajustada_mat
-                    materia.save()
-
-                    ajuste_editado.save()
-                    messages.success(request, "Ajuste de materia actualizado y stock recalculado.")
-                    return redirect('lista_ajustes_mat_prima')
-            except Exception as e:
-                messages.error(request, f"Error al editar: {e}")
-        else:
-            for error in form.errors.values():
-                messages.error(error)
-
-    return render(request, 'inventario/ajuste_mat/editar.html', {'ajuste': ajuste, 'form': form})
-
-
 @login_required
 def eliminar_ajuste_mat_prima(request, id_ajust_mat):
     if request.user.rol_fk_usuario.rol != 'ADMIN':

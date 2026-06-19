@@ -171,7 +171,7 @@
                             </div>
                         </td>
                         <td class="text-center">
-                            <a href="{% url 'editar_ajuste_mat_prima' a.id_ajust_mat %}" class="btn-action"><i class="fas fa-edit"></i></a>
+                            <!-- Se removió el botón de editar ajuste -->
                             <button type="button" onclick="confirmarEliminarAjuste('{{ a.id_ajust_mat }}', '{{ a.id_mat_fk_ajuste_mat.nombre_materia_prima }}')" class="btn-action" style="color: #ff8a8a;">
                                 <i class="fas fa-trash"></i>
                             </button>

@@ -27,6 +27,15 @@
         }
         /* Estilo para la unidad debajo del stock en el modal */
         .unit-subtitle { font-size: 0.7rem; color: rgba(255, 255, 255, 0.5); text-transform: lowercase; display: block; margin-top: 2px; }
+
+        /* Estilo para el contador de caracteres al estilo WYK */
+        .char-counter-wyk {
+            text-align: right;
+            font-size: 0.85rem;
+            color: #f5a623;
+            margin-top: 5px;
+            font-weight: 600;
+        }
     </style>
 {% endblock %}
 
@@ -75,8 +84,10 @@
                 <div class="col-md-6">
                     <div class="form-group-wyk">
                         <label class="form-label-wyk">Cantidad a Descontar</label>
-                        <input type="number" name="cantidad_ajustada_mat" id="id_cantidad" class="input-wyk"
-                               step="0.001" min="0.001" placeholder="Ej: 0.500" required>
+                        <input type="text" name="cantidad_ajustada_mat" id="id_cantidad" class="input-wyk"
+                               placeholder="Ej: 0.500" required
+                               onkeydown="if(['-', 'e', 'E'].includes(event.key)) event.preventDefault();"
+                               oninput="validarDecimalCantidad(this)">
                     </div>
                 </div>
             </div>
@@ -84,7 +95,8 @@
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Descripción del Suceso (Opcional)</label>
                 <textarea name="descripcion" id="id_descripcion" class="input-wyk" rows="3"
-                          placeholder="Detalla por qué se realiza este ajuste..."></textarea>
+                          placeholder="Detalla por qué se realiza este ajuste..." maxlength="200"></textarea>
+                <div class="char-counter-wyk"><span id="counter_val">0</span> / 200</div>
             </div>
 
             <div class="form-actions-wyk">
@@ -158,6 +170,34 @@
 <script>
     const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
 
+    /* CONTROL DINÁMICO DEL CONTADOR DE CARACTERES */
+    const textareaDesc = document.getElementById('id_descripcion');
+    const counterVal = document.getElementById('counter_val');
+
+    textareaDesc.addEventListener('input', function() {
+        counterVal.innerText = this.value.length;
+    });
+
+    /* CONTROL Y VALIDACIÓN DE ENTRADA DECIMAL (MÁXIMO 6 CARACTERES) */
+    function validarDecimalCantidad(input) {
+        // Reemplazar comas por puntos para homogeneizar decimales
+        let valor = input.value.replace(/,/g, '.');
+
+        // Filtrar caracteres inválidos (solo números y un único punto)
+        valor = valor.replace(/[^0-9.]/g, '');
+        const splitValor = valor.split('.');
+        if (splitValor.length > 2) {
+            valor = splitValor[0] + '.' + splitValor.slice(1).join('');
+        }
+
+        // Limitar longitud estricta a 6 caracteres en total
+        if (valor.length > 6) {
+            valor = valor.slice(0, 6);
+        }
+
+        input.value = valor;
+    }
+
     /* LÓGICA DEL SELECTOR */
     document.querySelectorAll('#tablaSelector tbody tr').forEach(fila => {
         fila.addEventListener('click', function() {
@@ -186,12 +226,12 @@
     function confirmarRegistroAjuste() {
         const materia = document.getElementById('id_materia_hidden').value;
         const tipo = document.getElementById('id_tipo_ajust_mat').value;
-        const cantidad = parseFloat(document.getElementById('id_cantidad').value);
+        const inputCant = document.getElementById('id_cantidad').value;
+        const cantidad = parseFloat(inputCant);
         const stockActual = parseFloat(document.getElementById('current_stock_val').innerText);
         const unidad = document.getElementById('current_unit_val').innerText;
 
-        // Se quita la validación obligatoria de la descripción aquí
-        if (!materia || !tipo || isNaN(cantidad)) {
+        if (!materia || !tipo || isNaN(cantidad) || inputCant.trim() === "") {
             Swal.fire({ ...swalConfig, icon: 'warning', title: 'Campos incompletos', text: 'Por favor, selecciona un insumo y completa los campos obligatorios.' });
             return;
         }
@@ -202,20 +242,22 @@
         }
 
         if (cantidad > stockActual) {
-            Swal.fire({ ...swalConfig, icon: 'error', title: 'Stock Insuficiente', text: `No puedes retirar ${cantidad} ${unidad}. Solo hay ${stockActual} ${unidad} en inventario.` });
+            Swal.fire({ ...swalConfig, icon: 'error', title: 'Stock Insuficiente', text: `No puedes retirar ${inputCant} ${unidad}. Solo hay ${stockActual} ${unidad} en inventario.` });
             return;
         }
 
         Swal.fire({
             ...swalConfig,
             title: '¿Confirmar Ajuste?',
-            text: `Se descontarán ${cantidad} ${unidad} del insumo seleccionado por "${tipo}".`,
+            text: `Se descontarán ${inputCant} ${unidad} del insumo seleccionado por "${tipo}".`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sí, aplicar',
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
+                // Aseguramos formato limpio para el POST de Django
+                document.getElementById('id_cantidad').value = cantidad;
                 document.getElementById('formCrearAjuste').submit();
             }
         });
