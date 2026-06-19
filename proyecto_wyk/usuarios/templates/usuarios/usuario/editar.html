@@ -42,25 +42,29 @@
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Número de Documento</label>
                 <input type="number" name="num_doc" id="id_num_doc" class="input-wyk"
-                       value="{{ form.num_doc.value|default:usuario.num_doc }}" required>
+                       value="{{ form.num_doc.value|default:usuario.num_doc }}" required
+                       oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10);">
             </div>
 
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Nombre Completo</label>
-                <input type="text" name="nombre" id="id_nombre" class="input-wyk"
-                       value="{{ form.nombre.value|default:usuario.nombre }}" required>
+                <input type="text" name="nombre" id="id_nombre" class="input-wyk" maxlength="50"
+                       value="{{ form.nombre.value|default:usuario.nombre }}" required
+                       oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ ]/g, '');">
             </div>
 
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Correo Electrónico</label>
                 <input type="email" name="email_usuario" id="id_email" class="input-wyk"
-                       value="{{ form.email_usuario.value|default:usuario.email_usuario }}" required>
+                       value="{{ form.email_usuario.value|default:usuario.email_usuario }}" required
+                       oninput="this.value = this.value.toLowerCase().trim();">
             </div>
 
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Teléfono / Celular</label>
-                <input type="text" name="tel_usuario" id="id_telefono" class="input-wyk"
-                       value="{{ form.tel_usuario.value|default:usuario.tel_usuario }}">
+                <input type="text" name="tel_usuario" id="id_telefono" class="input-wyk" maxlength="10"
+                       value="{{ form.tel_usuario.value|default:usuario.tel_usuario }}"
+                       oninput="this.value = this.value.replace(/[^0-9]/g, '');">
             </div>
 
             <div class="form-group-wyk">
@@ -76,16 +80,32 @@
                 </div>
             </div>
 
-            <div class="form-group-wyk">
-                <label class="form-label-wyk">Contraseña (Dejar en blanco para no cambiar)</label>
-                <div class="password-wrapper">
-                    <input type="password" name="password" id="id_password" class="input-wyk input-password"
-                           placeholder="Nueva contraseña si aplica">
-                    <button type="button" class="btn-toggle-eye" onclick="togglePassword()">
-                        <i class="fas fa-eye" id="eyeIcon"></i>
-                    </button>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group-wyk">
+                        <label class="form-label-wyk">Nueva Contraseña (Opcional)</label>
+                        <div class="password-wrapper">
+                            <input type="password" name="password" id="id_password" class="input-wyk input-password" maxlength="32"
+                                   placeholder="Nueva contraseña si aplica">
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassword('id_password', 'eyeIcon')">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        <p class="info-edit"><i class="fas fa-info-circle"></i> Solo si deseas cambiar la clave (8 a 32 caracteres, con mayúscula y número).</p>
+                    </div>
                 </div>
-                <p class="info-edit"><i class="fas fa-info-circle"></i> Solo escribe aquí si deseas cambiar la clave del usuario.</p>
+                <div class="col-md-6">
+                    <div class="form-group-wyk">
+                        <label class="form-label-wyk">Confirmar Nueva Contraseña</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="id_password_confirm" class="input-wyk input-password" maxlength="32"
+                                   placeholder="Repite la nueva contraseña">
+                            <button type="button" class="btn-toggle-eye" onclick="togglePassword('id_password_confirm', 'eyeIconConfirm')">
+                                <i class="fas fa-eye" id="eyeIconConfirm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="form-actions-wyk">
@@ -211,9 +231,10 @@
         });
     });
 
-    function togglePassword() {
-        const input = document.getElementById('id_password');
-        const icon = document.getElementById('eyeIcon');
+    /* FUNCIÓN ACTUALIZADA: Recibe parámetros dinámicos para servir a ambos inputs de contraseña */
+    function togglePassword(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
         input.type = input.type === 'password' ? 'text' : 'password';
         icon.classList.toggle('fa-eye');
         icon.classList.toggle('fa-eye-slash');
@@ -223,7 +244,10 @@
         const nombre = document.getElementById('id_nombre').value.trim();
         const doc = document.getElementById('id_num_doc').value.trim();
         const email = document.getElementById('id_email').value.trim();
+        const telefono = document.getElementById('id_telefono').value.trim();
         const rol = document.getElementById('id_rol_hidden').value;
+        const password = document.getElementById('id_password').value;
+        const passwordConfirm = document.getElementById('id_password_confirm').value;
 
         if (!nombre || !doc || !email || !rol) {
             Swal.fire({
@@ -233,6 +257,75 @@
                 text: 'Los campos básicos no pueden quedar vacíos.'
             });
             return;
+        }
+
+        /* VALIDACIÓN: NÚMERO DE DOCUMENTO (Entre 6 y 10 dígitos) */
+        if (doc.length < 6 || doc.length > 10) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Documento no válido',
+                text: 'El número de documento debe contener entre 6 y 10 dígitos.'
+            });
+            return;
+        }
+
+        /* VALIDACIÓN: MIN Y MAX CARACTERES PARA EL NOMBRE COMPLETO */
+        if (nombre.length < 3 || nombre.length > 50) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Nombre no válido',
+                text: 'El nombre completo debe tener entre 3 y 50 caracteres.'
+            });
+            return;
+        }
+
+        /* VALIDACIÓN: FORMATO DE CORREO ELECTRÓNICO */
+        const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!regexEmail.test(email)) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Correo no válido',
+                text: 'Por favor, ingresa una dirección de correo electrónico válida (Ej: nombre@dominio.com).'
+            });
+            return;
+        }
+
+        /* VALIDACIÓN: TELÉFONO FLEXIBLE */
+        if (telefono.length > 0 && telefono.length !== 7 && telefono.length !== 10) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Teléfono no válido',
+                text: 'El número de contacto ingresado debe tener exactamente 7 dígitos (teléfono fijo) o 10 dígitos (celular).'
+            });
+            return;
+        }
+
+        /* NUEVA VALIDACIÓN CONDICIONAL: Verifica contraseñas si el usuario interactuó con ellas */
+        if (password.length > 0 || passwordConfirm.length > 0) {
+            const regexSeguridad = /^(?=.*[A-Z])(?=.*\d).{8,32}$/;
+            if (!regexSeguridad.test(password)) {
+                Swal.fire({
+                    ...swalConfig,
+                    icon: 'error',
+                    title: 'Contraseña no válida',
+                    text: 'La nueva contraseña debe tener entre 8 y 32 caracteres, incluir una letra mayúscula y por lo menos un número.'
+                });
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                Swal.fire({
+                    ...swalConfig,
+                    icon: 'error',
+                    title: 'Las contraseñas no coinciden',
+                    text: 'Por favor, verifica que ambas contraseñas sean idénticas.'
+                });
+                return;
+            }
         }
 
         Swal.fire({
