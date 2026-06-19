@@ -24,7 +24,8 @@
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Nombre del Rol</label>
                 <input type="text" name="rol" value="{{ form.rol.value|default:rol.rol }}" id="rol_nombre"
-                       class="input-wyk input-uppercase" required>
+                       class="input-wyk input-uppercase" maxlength="20" required
+                       oninput="this.value = this.value.toUpperCase().replace(/[^A-ZÁÉÍÓÚÑ ]/g, '');">
             </div>
 
             <div class="form-group-wyk" style="margin-bottom: 2.5rem;">
@@ -80,6 +81,17 @@
 
         if (nombreRol === "") {
             Swal.fire({ ...swalConfig, icon: 'error', title: 'Campo vacío', text: 'El nombre del rol es obligatorio.' });
+            return;
+        }
+
+        /* VALIDACIÓN DE RANGO: MÍNIMO 3 Y MÁXIMO 20 CARACTERES */
+        if (nombreRol.length < 3 || nombreRol.length > 20) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Nombre de rol no válido',
+                text: 'El nombre del rol debe contener entre 3 y 20 caracteres.'
+            });
             return;
         }
 

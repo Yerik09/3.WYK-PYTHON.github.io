@@ -23,8 +23,9 @@
 
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Nombre del Rol</label>
-                <input type="text" name="rol" id="id_rol" class="input-wyk input-uppercase"
-                       placeholder="Ej: CAJERO" value="{{ form.rol.value|default:'' }}" required>
+                <input type="text" name="rol" id="id_rol" class="input-wyk input-uppercase" maxlength="20"
+                       placeholder="Ej: CAJERO" value="{{ form.rol.value|default:'' }}" required
+                       oninput="this.value = this.value.toUpperCase().replace(/[^A-ZÁÉÍÓÚÑ ]/g, '');">
             </div>
 
             <div class="form-group-wyk">
@@ -82,7 +83,23 @@
         const nivel = document.getElementById('id_clasificacion').value;
 
         if (!nombreRol || !nivel) {
-            Swal.fire({ ...swalConfig, icon: 'warning', title: 'Campos incompletos' });
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Campos incompletos',
+                text: 'Por favor, llena todos los campos obligatorios.'
+            });
+            return;
+        }
+
+        /* NUEVA VALIDACIÓN: LONGITUD MÍNIMA Y MÁXIMA DEL ROL */
+        if (nombreRol.length < 3 || nombreRol.length > 20) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Nombre de rol no válido',
+                text: 'El nombre del rol debe tener entre 3 y 20 caracteres.'
+            });
             return;
         }
 
