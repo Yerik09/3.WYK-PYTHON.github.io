@@ -10,6 +10,128 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
 
+    <style>
+        /* --- ESTILOS DE LA BARRA SUPERIOR Y NOTIFICACIONES --- */
+        .top-navbar-wyk {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 15px 30px;
+            background: #1a0a00;
+            border-bottom: 1px solid rgba(245, 166, 35, 0.1);
+        }
+
+        .notif-wrapper-wyk {
+            position: relative;
+            display: inline-block;
+        }
+
+        .btn-notif-wyk {
+            background: transparent;
+            border: none;
+            color: #f5a623;
+            font-size: 1.3rem;
+            cursor: pointer;
+            position: relative;
+            padding: 5px;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-notif-wyk:hover {
+            transform: scale(1.05);
+        }
+
+        .badge-notif-wyk {
+            position: absolute;
+            top: -2px;
+            right: -4px;
+            background-color: #d9534f;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dropdown-notif-wyk {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 40px;
+            width: 320px;
+            background: #1a0a00;
+            border: 1px solid rgba(245, 166, 35, 0.2);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 1000;
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 0;
+            list-style: none;
+        }
+
+        .dropdown-notif-wyk.show {
+            display: block;
+        }
+
+        .header-notif-wyk {
+            padding: 12px 15px;
+            background: rgba(245, 166, 35, 0.05);
+            border-bottom: 1px solid rgba(245, 166, 35, 0.1);
+            color: #f5a623;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0;
+            text-align: center;
+        }
+
+        .item-notif-wyk {
+            display: flex;
+            align-items: start;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            text-decoration: none;
+            transition: background 0.2s ease;
+        }
+
+        .item-notif-wyk:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .icon-notif-wyk {
+            margin-right: 12px;
+            margin-top: 2px;
+            font-size: 1.1rem;
+        }
+
+        .text-notif-wyk strong {
+            display: block;
+            color: #ffffff;
+            font-size: 0.85rem;
+            margin-bottom: 2px;
+        }
+
+        .text-notif-wyk span {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.78rem;
+        }
+
+        .empty-notif-wyk {
+            padding: 25px;
+            text-align: center;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+
+        .empty-notif-wyk i {
+            display: block;
+            font-size: 1.6rem;
+            color: #5cb85c;
+            margin-bottom: 8px;
+        }
+    </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -130,6 +252,50 @@
         </nav>
 
         <main class="main-content">
+            <header class="top-navbar-wyk">
+                {% if user.rol_fk_usuario.rol == 'ADMIN' or user.rol_fk_usuario.rol == 'PANADERO' or user.rol_fk_usuario.rol == 'PASTELERO' %}
+                <div class="notif-wrapper-wyk">
+                    <button class="btn-notif-wyk" id="btnNotifWyk" title="Alertas de Inventario">
+                        <i class="fas fa-bell"></i>
+                        {% if total_notificaciones > 0 %}
+                            <span class="badge-notif-wyk">{{ total_notificaciones }}</span>
+                        {% endif %}
+                    </button>
+
+                    <ul class="dropdown-notif-wyk" id="dropdownNotifWyk">
+                        <li class="header-notif-wyk">Alertas de Inventario</li>
+
+                        {% if total_notificaciones > 0 %}
+                            {% for notif in lista_notificaciones %}
+                                {% if user.rol_fk_usuario.rol == 'ADMIN' or notif.tipo == 'materia' %}
+                                <li>
+                                    <div class="item-notif-wyk">
+                                        <div class="icon-notif-wyk">
+                                            {% if notif.tipo == 'producto' %}
+                                                <i class="fas fa-box text-warning"></i>
+                                            {% else %}
+                                                <i class="fas fa-leaf style-color" style="color: #d9534f;"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-notif-wyk">
+                                            <strong>{{ notif.nombre }}</strong>
+                                            <span>{{ notif.mensaje }}</span>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <li class="empty-notif-wyk">
+                                <i class="fas fa-check-circle"></i>
+                                ¡Todo al día! No hay stock crítico.
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </header>
+
             <section class="content-body">
                 {% block content %}{% endblock %}
             </section>
@@ -139,6 +305,29 @@
     <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
     <script src="{% static 'js/sidebar.js' %}"></script>
     <script src="{% static 'js/logout.js' %}"></script>
+
+    <script>
+        // --- INTERACCIÓN INTERNA DEL DROPDOWN DE NOTIFICACIONES ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnNotif = document.getElementById('btnNotifWyk');
+            const dropdownNotif = document.getElementById('dropdownNotifWyk');
+
+            if (btnNotif && dropdownNotif) {
+                // Alternar visibilidad al hacer click en la campana
+                btnNotif.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdownNotif.classList.toggle('show');
+                });
+
+                // Ocultar el menú si se hace click fuera de él
+                document.addEventListener('click', function(e) {
+                    if (!dropdownNotif.contains(e.target) && e.target !== btnNotif && !btnNotif.contains(e.target)) {
+                        dropdownNotif.classList.remove('show');
+                    }
+                });
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

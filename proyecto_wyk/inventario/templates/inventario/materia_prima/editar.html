@@ -20,6 +20,20 @@
             min-height: 100px;
             resize: none;
         }
+
+        /* --- ESTILOS PARA EL CONTADOR DE CARACTERES --- */
+        .char-counter-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .char-counter {
+            font-size: 0.75rem;
+            color: #f5a623;
+            opacity: 0.8;
+        }
     </style>
 {% endblock %}
 
@@ -42,7 +56,10 @@
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Nombre del Insumo</label>
                 <input type="text" name="nombre_materia_prima" id="id_nombre_materia" class="input-wyk"
-                       value="{{ form.nombre_materia_prima.value|default:materia.nombre_materia_prima }}" required>
+                       value="{{ form.nombre_materia_prima.value|default:materia.nombre_materia_prima }}" maxlength="50" required>
+                <div class="char-counter-container">
+                    <span id="contador_nombre" class="char-counter">0 / 50</span>
+                </div>
             </div>
 
             <div class="row">
@@ -59,8 +76,8 @@
                 <div class="col-md-6">
                     <div class="form-group-wyk">
                         <label class="form-label-wyk">Existencias Actuales</label>
-                        <input type="number" name="cantidad_exist_mat_prima" id="id_cantidad_exist" class="input-wyk"
-                               value="{{ form.cantidad_exist_mat_prima.value|default:materia.cantidad_exist_mat_prima|unlocalize }}" step="0.001" required>
+                        <input type="text" name="cantidad_exist_mat_prima" id="id_cantidad_exist" class="input-wyk"
+                               value="{{ form.cantidad_exist_mat_prima.value|default:materia.cantidad_exist_mat_prima }}" required>
                     </div>
                 </div>
             </div>
@@ -73,8 +90,11 @@
 
             <div class="form-group-wyk">
                 <label class="form-label-wyk">Descripción del Insumo (Opcional)</label>
-                <textarea name="descripcion_mat_prima" id="id_descripcion" class="input-wyk textarea-wyk"
+                <textarea name="descripcion_mat_prima" id="id_descripcion" class="input-wyk textarea-wyk" maxlength="200"
                           placeholder="Detalles adicionales sobre la materia prima...">{{ form.descripcion_mat_prima.value|default:materia.descripcion_mat_prima|default:'' }}</textarea>
+                <div class="char-counter-container">
+                    <span id="contador_descripcion" class="char-counter">0 / 200</span>
+                </div>
             </div>
 
             <div class="form-actions-wyk mt-4">
@@ -102,28 +122,162 @@
         scrollbarPadding: false
     };
 
-    {% if messages %}
-        {% for message in messages %}
-            Swal.fire({
-                ...swalConfig,
-                icon: "{% if 'success' in message.tags %}success{% else %}error{% endif %}",
-                title: "{% if 'success' in message.tags %}¡Listo!{% else %}¡Atención!{% endif %}",
-                text: "{{ message|escapejs }}"
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    ...swalConfig,
+                    icon: "{% if 'success' in message.tags %}success{% else %}error{% endif %}",
+                    title: "{% if 'success' in message.tags %}¡Listo!{% else %}¡Atención!{% endif %}",
+                    text: "{{ message|escapejs }}"
+                });
+            {% endfor %}
+        {% endif %}
+
+        const inputNombre = document.getElementById('id_nombre_materia');
+        const contadorNombre = document.getElementById('contador_nombre');
+        const inputStock = document.getElementById('id_cantidad_exist');
+        const inputFechaVenc = document.getElementById('id_fecha_vencimiento');
+        const inputDescripcion = document.getElementById('id_descripcion');
+        const contadorDesc = document.getElementById('contador_descripcion');
+
+        // Asegurar que cualquier punto inicial proveniente de la BD se renderice como coma
+        if (inputStock && inputStock.value) {
+            inputStock.value = inputStock.value.replace('.', ',');
+        }
+
+        // --- RESTRICCIÓN DINÁMICA DE LA FECHA DE VENCIMIENTO AL MODIFICARLA ---
+        if (inputFechaVenc) {
+            inputFechaVenc.addEventListener('focus', function() {
+                const hoy = new Date();
+                const mañana = new Date(hoy);
+                mañana.setDate(hoy.getDate() + 1);
+
+                const yyyy = mañana.getFullYear();
+                const mm = String(mañana.getMonth() + 1).padStart(2, '0');
+                const dd = String(mañana.getDate()).padStart(2, '0');
+
+                const fechaMinimaStr = `${yyyy}-${mm}-${dd}`;
+                this.setAttribute('min', fechaMinimaStr);
             });
-        {% endfor %}
-    {% endif %}
+        }
+
+        // --- CONTADOR DINÁMICO DE CARACTERES EN EL NOMBRE ---
+        if (inputNombre && contadorNombre) {
+            const actualizarContadorNombre = () => {
+                const longitud = inputNombre.value.length;
+                contadorNombre.textContent = `${longitud} / 50`;
+            };
+            actualizarContadorNombre();
+            inputNombre.addEventListener('input', actualizarContadorNombre);
+        }
+
+        // --- CONTROL ESTRICTO DE COMAS DECIMALES Y LONGITUD (HASTA 8 CARACTERES) ---
+        if (inputStock) {
+            inputStock.addEventListener('keydown', function(e) {
+                // Teclas de control permitidas
+                const allowedKeys = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', '.', ','];
+
+                // Si presionan punto o coma, controlar que solo exista un separador decimal
+                if (e.key === ',' || e.key === '.') {
+                    if (this.value.includes(',')) {
+                        e.preventDefault();
+                    }
+                    return;
+                }
+
+                // Bloquear caracteres no numéricos
+                if (!allowedKeys.includes(e.key) && isNaN(Number(e.key))) {
+                    e.preventDefault();
+                    return;
+                }
+
+                // Limitar la longitud máxima a 8 caracteres
+                if (!allowedKeys.includes(e.key) && this.value.length >= 8) {
+                    e.preventDefault();
+                }
+            });
+
+            inputStock.addEventListener('input', function() {
+                // Reemplazar de inmediato cualquier punto por coma de forma visual
+                this.value = this.value.replace('.', ',');
+
+                // Eliminar cualquier cosa que no sea número o coma
+                this.value = this.value.replace(/[^0-9,]/g, '');
+
+                // Asegurar un único separador de coma
+                const splitCommas = this.value.split(',');
+                if (splitCommas.length > 2) {
+                    this.value = splitCommas[0] + ',' + splitCommas.slice(1).join('');
+                }
+
+                // Recortar si excede los 8 caracteres totales
+                if (this.value.length > 8) {
+                    this.value = this.value.substring(0, 8);
+                }
+            });
+        }
+
+        // --- CONTADOR DINÁMICO DE CARACTERES EN LA DESCRIPCIÓN ---
+        if (inputDescripcion && contadorDesc) {
+            const actualizarContadorDesc = () => {
+                const longitud = inputDescripcion.value.length;
+                contadorDesc.textContent = `${longitud} / 200`;
+            };
+            actualizarContadorDesc();
+            inputDescripcion.addEventListener('input', actualizarContadorDesc);
+        }
+    });
 
     function confirmarActualizacionMateria() {
         const nombre = document.getElementById('id_nombre_materia').value.trim();
-        const stock = document.getElementById('id_cantidad_exist').value;
-        const fecha = document.getElementById('id_fecha_vencimiento').value;
+        const stockStr = document.getElementById('id_cantidad_exist').value.trim();
+        const fechaVencVal = document.getElementById('id_fecha_vencimiento').value;
 
-        if (!nombre || !stock || !fecha) {
+        if (!nombre || !stockStr || !fechaVencVal) {
             Swal.fire({
                 ...swalConfig,
                 icon: 'warning',
                 title: 'Campos incompletos',
                 text: 'Por favor, asegúrese de llenar los campos obligatorios (Nombre, Existencias y Fecha de Vencimiento).'
+            });
+            return;
+        }
+
+        // Reemplazar la coma por punto temporalmente solo para que la lógica de validación de JS pueda evaluarlo correctamente
+        const parsedStock = parseFloat(stockStr.replace(',', '.'));
+
+        if (isNaN(parsedStock)) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Cantidad inválida',
+                text: 'Por favor, ingrese un número decimal válido para las existencias.'
+            });
+            return;
+        }
+
+        if (parsedStock < 0) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Stock inválido',
+                text: 'La cantidad actual no puede ser un número negativo.'
+            });
+            return;
+        }
+
+        // --- VALIDACIÓN LÓGICA DE LA FECHA DE VENCIMIENTO ---
+        const fechaSeleccionada = new Date(fechaVencVal + 'T00:00:00');
+        const fechaHoy = new Date();
+        fechaHoy.setHours(0, 0, 0, 0);
+
+        if (fechaSeleccionada <= fechaHoy) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Fecha inválida',
+                text: 'La fecha de vencimiento debe ser estrictamente posterior al día de hoy.'
             });
             return;
         }
