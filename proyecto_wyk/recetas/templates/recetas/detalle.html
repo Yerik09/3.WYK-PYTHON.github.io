@@ -1,10 +1,205 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load static %}
 
-</body>
-</html>
+{% block title %}Receta Maestra: {{ receta.nombre_receta }} - WYK{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-tablas.css' %}">
+    <style>
+        :root {
+            --oro-brillante: #ffc107;
+            --texto-principal: #ffffff;
+            --texto-secundario: #e0e0e0;
+            --bg-card: rgba(30, 15, 5, 0.95);
+        }
+
+        .detalle-container { max-width: 950px; margin: 20px auto; padding: 20px; animation: fadeIn 0.5s ease; }
+
+        .header-factura {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--oro-brillante);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-card-wyk {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+        }
+
+        .info-item label {
+            display: flex;
+            align-items: center;
+            color: var(--oro-brillante);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1.8px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .info-item label i { margin-right: 10px; font-size: 1rem; }
+        .info-item span { color: var(--texto-principal); font-size: 1.2rem; display: block; font-weight: 500; }
+
+        .badge-estado {
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+        .estado-finalizada {
+            background: rgba(40, 167, 69, 0.25);
+            color: #5fff8b;
+            border: 1px solid #5fff8b;
+            box-shadow: 0 0 15px rgba(95, 255, 139, 0.3);
+        }
+        .estado-cancelada {
+            background: rgba(220, 53, 69, 0.25);
+            color: #ff6b6b;
+            border: 1px solid #ff6b6b;
+        }
+
+        .items-card {
+            background: rgba(20, 10, 5, 0.8);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+
+        .tabla-wyk-detalle {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 12px;
+        }
+
+        .tabla-wyk-detalle th {
+            color: var(--oro-brillante);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1.5px;
+            padding: 15px;
+            border-bottom: 2px solid rgba(255, 193, 7, 0.2);
+        }
+
+        .tabla-wyk-detalle td {
+            background: rgba(255, 255, 255, 0.07);
+            padding: 18px;
+            color: #ffffff;
+            font-size: 1.05rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .tabla-wyk-detalle tr td:first-child { border-radius: 12px 0 0 12px; border-left: 3px solid var(--oro-brillante); }
+        .tabla-wyk-detalle tr td:last-child { border-radius: 0 12px 12px 0; }
+
+        .result-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .result-box {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.25));
+            padding: 25px 50px;
+            border-radius: 15px;
+            border: 1px solid var(--oro-brillante);
+            text-align: right;
+            box-shadow: 0 5px 25px rgba(255, 193, 7, 0.1);
+        }
+
+        .result-box label { color: #e0e0e0; display: block; font-size: 0.9rem; margin-bottom: 8px; font-weight: 600; }
+        .result-box h2 { color: var(--oro-brillante); margin: 0; font-size: 2.2rem; font-weight: 900; text-shadow: 0 0 10px rgba(255, 193, 7, 0.3); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="detalle-container">
+    <a href="{% url 'lista_recetas' %}" style="color: var(--oro-brillante); text-decoration: none; display: inline-flex; align-items: center; margin-bottom: 25px; font-weight: 700; font-size: 0.9rem;">
+        <i class="fas fa-chevron-left me-2"></i> VOLVER AL LIBRO DE RECETAS
+    </a>
+
+    <div class="header-factura">
+        <div>
+            <h1 style="color: #fff; margin: 0; font-size: 2.2rem; letter-spacing: -1px; font-weight: 800;">Receta Maestra</h1>
+            <p style="color: #bbb; margin: 8px 0 0 0; font-family: 'Courier New', Courier, monospace; font-size: 1rem;">Código de Ficha: #{{ receta.id_producto_fk_receta.id_producto }}</p>
+        </div>
+        <div class="badge-estado {% if receta.estado_receta %}estado-finalizada{% else %}estado-cancelada{% endif %}">
+            <i class="fas fa-circle me-2" style="font-size: 0.7rem;"></i>{% if receta.estado_receta %}Activa{% else %}Inactiva{% endif %}
+        </div>
+    </div>
+
+    <div class="info-card-wyk">
+        <div class="info-item">
+            <label><i class="fas fa-signature"></i> Nombre de la Receta</label>
+            <span>{{ receta.nombre_receta }}</span>
+        </div>
+        <div class="info-item">
+            <label><i class="fas fa-cookie"></i> Producto Vinculado</label>
+            <span>{{ receta.id_producto_fk_receta.nombre_producto }}</span>
+        </div>
+        <div class="info-item">
+            <label><i class="fas fa-bread-slice"></i> Clasificación</label>
+            <span>{{ receta.id_producto_fk_receta.get_tipo_producto_display }}</span>
+        </div>
+
+        <div class="info-item" style="grid-column: 1 / -1;">
+            <label><i class="fas fa-align-left"></i> Instrucciones / Descripción</label>
+            <span style="font-style: italic; color: #ccc;">"{{ receta.descripcion_receta|default:"Sin instrucciones o especificaciones adicionales registradas." }}"</span>
+        </div>
+    </div>
+
+    <div class="items-card">
+        <h3 style="color: #fff; margin-bottom: 25px; font-size: 1.4rem; display: flex; align-items: center; font-weight: 800;">
+            <i class="fas fa-leaf me-3" style="color: var(--oro-brillante);"></i> COMPONENTES E INGREDIENTES BASE
+        </h3>
+
+        <table class="tabla-wyk-detalle">
+            <thead>
+                <tr>
+                    <th>Materia Prima / Insumo</th>
+                    <th style="text-align: center;">Cantidad Requerida</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in receta.insumos_receta.all %}
+                <tr>
+                    <td style="font-weight: 700; color: #fff;">{{ d.id_materia_prima_fk_det_rec.nombre_materia_prima }}</td>
+                    <td style="text-align: center; font-weight: 800; color: var(--oro-brillante); font-size: 1.1rem;">
+                        {{ d.cantidad_insumo_base|stringformat:"g" }} {{ d.id_materia_prima_fk_det_rec.presentacion_mat_prima|lower }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" class="text-center py-5" style="background: rgba(255,255,255,0.03); border-radius: 12px;">
+                        <i class="fas fa-exclamation-triangle d-block mb-2" style="font-size: 1.5rem; color: #ffc107; opacity: 0.6;"></i>
+                        <span style="color: rgba(255,255,255,0.5); font-style: italic;">Esta receta maestra no posee ingredientes vinculados en su detalle técnico.</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="result-section">
+            <div class="result-box">
+                <label>RENDIMIENTO / CANTIDAD BASE DE LA RECETA</label>
+                <h2>{{ receta.cantidad_base }} Unidad{{ receta.cantidad_base|pluralize }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

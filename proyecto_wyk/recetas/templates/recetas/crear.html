@@ -155,11 +155,13 @@
                     </thead>
                     <tbody>
                         {% for pr in productos %}
+                        {% if pr.tipo_producto == 'PANADERIA' or pr.tipo_producto == 'PASTELERIA' %}
                         <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}" data-tiene-receta="{% if pr.tiene_receta %}true{% else %}false{% endif %}">
                             <td class="text-center text-gold">#{{ pr.id_producto }}</td>
                             <td class="text-white">{{ pr.nombre_producto }}</td>
                             <td class="text-center"><span class="badge-nivel">{{ pr.cant_exist_producto }}</span></td>
                         </tr>
+                        {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -224,9 +226,15 @@
         counterDesc.innerText = `${this.value.length} / 255`;
     });
 
-    /* VALIDACIONES EN TIEMPO REAL: CANTIDAD BASE (RENDIMIENTO) - SOLO ENTEROS */
+    /* VALIDACIONES EN TIEMPO REAL: CANTIDAD BASE (RENDIMIENTO) - SOLO ENTEROS SIN MENOS, PUNTO NI COMA */
     const inputCantidadBase = document.querySelector('input[name="cantidad_base"]');
     if (inputCantidadBase) {
+        inputCantidadBase.addEventListener('keydown', function(e) {
+            if (e.key === '-' || e.key === '.' || e.key === ',' || e.keyCode === 109 || e.keyCode === 189 || e.keyCode === 110 || e.keyCode === 190 || e.keyCode === 188) {
+                e.preventDefault();
+            }
+        });
+
         inputCantidadBase.addEventListener('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');
             if (this.value.length > 8) this.value = this.value.slice(0, 8);
@@ -317,6 +325,12 @@
             inputCantidad.removeAttribute('disabled');
             inputCantidad.style.pointerEvents = 'auto';
             inputCantidad.required = true;
+
+            inputCantidad.addEventListener('keydown', function(e) {
+                if (e.key === '-' || e.keyCode === 109 || e.keyCode === 189) {
+                    e.preventDefault();
+                }
+            });
 
             inputCantidad.addEventListener('input', function() {
                 if (this.value.includes('-')) this.value = this.value.replace(/-/g, '');

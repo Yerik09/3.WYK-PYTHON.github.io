@@ -91,6 +91,10 @@ def editar_receta(request, id_receta):
 
     receta = get_object_or_404(Receta, id_receta=id_receta)
 
+    # Consultas requeridas para alimentar el modal de insumos y las validaciones de JS
+    materias_primas = MateriaPrima.objects.filter(estado_materia_prima=True)
+    nombres_recetas = list(Receta.objects.values_list('nombre_receta', flat=True))
+
     if request.method == 'POST':
         form = RecetaForm(request.POST, instance=receta)
         formset = DetalleRecetaFormSet(request.POST, instance=receta, prefix='insumos_receta')
@@ -119,7 +123,9 @@ def editar_receta(request, id_receta):
     return render(request, 'recetas/editar.html', {
         'form': form,
         'formset': formset,
-        'receta': receta
+        'receta': receta,
+        'materias_primas': materias_primas,
+        'nombres_recetas': nombres_recetas
     })
 
 
@@ -162,7 +168,8 @@ def cambiar_estado_receta_ajax(request):
             receta.save()
 
             estado_str = "activada" if nuevo_estado else "inactivada"
-            return JsonResponse({'success': True, 'message': f"La receta '{receta.nombre_receta}' fue {estado_str} correctamente."})
+            return JsonResponse(
+                {'success': True, 'message': f"La receta '{receta.nombre_receta}' fue {estado_str} correctamente."})
         except Exception as e:
             return JsonResponse({'success': False, 'message': f"Error: {str(e)}"})
 

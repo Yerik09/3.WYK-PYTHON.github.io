@@ -93,6 +93,9 @@
         </div>
 
         <div class="productos-card">
+            <button type="button" class="btn-add-item" onclick="abrirModalMateria()">
+                <i class="fas fa-plus"></i> Añadir Insumo
+            </button>
             <h3 style="margin-bottom: 20px;">Ingredientes de la Receta</h3>
 
             <div class="table-wrap">
@@ -124,6 +127,7 @@
                                 <span class="unit-subtitle">{{ f.instance.id_materia_prima_fk_det_rec.presentacion_mat_prima|lower }}</span>
                             </td>
                             <td class="text-center">
+                                {% if f.DELETE %}<div style="display: none;">{{ f.DELETE }}</div>{% endif %}
                                 <button type="button" class="btn-eliminar-fila" onclick="eliminarFilaEditar(this)">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -132,6 +136,28 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <template id="empty-row-ingrediente">
+                    <tr>
+                        <div style="display: none;">
+                            {{ formset.empty_form.id }}
+                        </div>
+                        <td>
+                            <input type="text" class="form-control input-item-readonly" readonly>
+                            <div style="display: none;">
+                                {{ formset.empty_form.id_materia_prima_fk_det_rec }}
+                            </div>
+                        </td>
+                        <td>
+                            {{ formset.empty_form.cantidad_insumo_base }}
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn-eliminar-fila" onclick="eliminarFilaEditar(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
             </div>
         </div>
 
@@ -142,16 +168,46 @@
         </div>
     </form>
 </div>
+
+<div class="modal fade modal-wyk-custom" id="modalMateriaPrima" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-wyk">
+                <h5 class="modal-title text-gold"><i class="fas fa-leaf me-2"></i> Seleccionar Insumo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table-wyk mb-0" id="tablaSelectorMateria">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;" class="text-center">ID</th>
+                            <th>NOMBRE DEL INSUMO</th>
+                            <th class="text-center">STOCK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in materias_primas %}
+                        <tr class="fila-seleccionable" data-id="{{ m.id_materia_prima }}" data-nombre="{{ m.nombre_materia_prima }}" data-unidad="{{ m.presentacion_mat_prima }}">
+                            <td class="text-center text-gold">#{{ m.id_materia_prima }}</td>
+                            <td class="text-white">{{ m.nombre_materia_prima }}</td>
+                            <td class="text-center"><span class="badge-nivel">{{ m.cantidad_exist_mat_prima|floatformat:"-3" }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
-
-    // Lista de nombres existentes inyectada desde Django (calcado de crear)
+    
     const nombresExistentes = {{ nombres_recetas|safe|default:"[]" }};
-    // Guardamos el nombre original de esta receta en específico para permitir que conserve su propio nombre al editar
     const nombreOriginalReceta = "{{ receta.nombre_receta|escapejs }}".toLowerCase();
 
     /* VALIDACIÓN DE LONGITUD PARA NOMBRE Y DESCRIPCIÓN */
@@ -176,9 +232,22 @@
         });
     }
 
-    /* VALIDACIONES EN TIEMPO REAL: CANTIDAD BASE (RENDIMIENTO) - SOLO ENTEROS */
+    /* VALIDACIONES EN TIEMPO REAL: CANTIDAD BASE (RENDIMIENTO) - SOLO ENTEROS SIN MENOS, PUNTO NI COMA */
     const inputCantidadBase = document.querySelector('input[name="cantidad_base"]');
     if (inputCantidadBase) {
+        // Limpieza visual al cargar (remueve decimales redundantes si Django los envía en el render)
+        if (inputCantidadBase.value) {
+            const valParsed = parseFloat(inputCantidadBase.value.replace(',', '.'));
+            if (!isNaN(valParsed)) inputCantidadBase.value = valParsed;
+        }
+
+        // Bloquea los caracteres prohibidos antes de que se escriban, cuidando la integridad de lo ya redactado
+        inputCantidadBase.addEventListener('keydown', function(e) {
+            if (e.key === '-' || e.key === '.' || e.key === ',' || e.keyCode === 109 || e.keyCode === 189 || e.keyCode === 110 || e.keyCode === 190 || e.keyCode === 188) {
+                e.preventDefault();
+            }
+        });
+
         inputCantidadBase.addEventListener('input', function() {
             this.value = this.value.replace(/[^0-9]/g, '');
             if (this.value.length > 8) this.value = this.value.slice(0, 8);
@@ -189,28 +258,138 @@
     document.querySelectorAll('#tabla-ingredientes tbody tr').forEach(fila => {
         const inputCantidad = fila.querySelector('input[name*="cantidad_insumo_base"]');
         if (inputCantidad) {
-            inputCantidad.addEventListener('input', function() {
-                if (this.value.includes('-')) this.value = this.value.replace(/-/g, '');
-                if (parseFloat(this.value) < 0) this.value = '';
-                const maxCaracteres = 8;
-                if (this.value.length > maxCaracteres) this.value = this.value.slice(0, maxCaracteres);
-            });
+            // Remueve los decimales redundantes visualmente al cargar (ej: 1,000 -> 1)
+            if (inputCantidad.value) {
+                const valorLimpio = parseFloat(inputCantidad.value.replace(',', '.'));
+                if (!isNaN(valorLimpio)) {
+                    inputCantidad.value = valorLimpio;
+                }
+            }
+            vincularEventosCantidad(inputCantidad);
         }
     });
+
+    function vincularEventosCantidad(input) {
+        // Bloquea el símbolo menos ANTES de que se imprima, previniendo alteraciones en lo ya escrito
+        input.addEventListener('keydown', function(e) {
+            if (e.key === '-' || e.keyCode === 109 || e.keyCode === 189) {
+                e.preventDefault();
+            }
+        });
+
+        input.addEventListener('input', function() {
+            if (this.value.includes('-')) this.value = this.value.replace(/-/g, '');
+            if (parseFloat(this.value) < 0) this.value = '';
+            const maxCaracteres = 8;
+            if (this.value.length > maxCaracteres) this.value = this.value.slice(0, maxCaracteres);
+        });
+    }
+
+    /* APERTURA Y CONTROL DE MODAL MATERIA PRIMA */
+    function abrirModalMateria() {
+        new bootstrap.Modal(document.getElementById('modalMateriaPrima')).show();
+    }
+
+    document.querySelectorAll('#tablaSelectorMateria tbody tr').forEach(fila => {
+        fila.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const nombre = this.dataset.nombre;
+            const unidad = this.dataset.unidad;
+
+            // Buscamos tanto en select ocultos como en inputs ocultos de las filas visibles
+            const selectInsumos = document.querySelectorAll('#tabla-ingredientes tbody [name$="-id_materia_prima_fk_det_rec"]');
+            let yaExiste = false;
+
+            for (let i = 0; i < selectInsumos.length; i++) {
+                // Si la fila está oculta (marcada para DELETE), no cuenta como duplicada en la activa
+                const filaPadre = selectInsumos[i].closest('tr');
+                if (filaPadre && filaPadre.style.display === 'none') continue;
+
+                if (selectInsumos[i].value === id) {
+                    yaExiste = true;
+                    break;
+                }
+            }
+
+            if (yaExiste) {
+                bootstrap.Modal.getInstance(document.getElementById('modalMateriaPrima')).hide();
+                Swal.fire({
+                    ...swalConfig,
+                    icon: 'error',
+                    title: 'Ingrediente Duplicado',
+                    html: `El insumo <b class="text-gold">${nombre}</b> ya se encuentra activo en la receta.`
+                });
+                return;
+            }
+
+            agregarFilaIngredienteDinamico(id, nombre, unidad);
+            bootstrap.Modal.getInstance(document.getElementById('modalMateriaPrima')).hide();
+        });
+    });
+
+    /* AGREGAR NUEVAS FILAS DINÁMICAMENTE */
+    function agregarFilaIngredienteDinamico(item_id, nombre, unidad) {
+        const totalFormsInput = document.getElementById('id_insumos_receta-TOTAL_FORMS');
+        const totalForms = parseInt(totalFormsInput.value);
+
+        const template = document.getElementById('empty-row-ingrediente').content.cloneNode(true);
+        const tr = template.querySelector('tr');
+
+        tr.innerHTML = tr.innerHTML.replace(/__prefix__/g, totalForms);
+        const tbody = document.querySelector('#tabla-ingredientes tbody');
+        tbody.appendChild(tr);
+
+        const nuevaFila = tbody.lastElementChild;
+        nuevaFila.querySelector('.input-item-readonly').value = nombre;
+
+        const selectItem = nuevaFila.querySelector('select[name*="id_materia_prima_fk_det_rec"]');
+        if(selectItem) selectItem.value = item_id;
+
+        const inputCantidad = nuevaFila.querySelector('input[name*="cantidad_insumo_base"]');
+        if(inputCantidad) {
+            inputCantidad.removeAttribute('readonly');
+            inputCantidad.removeAttribute('disabled');
+            inputCantidad.style.pointerEvents = 'auto';
+            inputCantidad.required = true;
+            vincularEventosCantidad(inputCantidad);
+
+            const spanUnidad = document.createElement('span');
+            spanUnidad.className = 'unit-subtitle';
+            spanUnidad.innerText = unidad ? unidad.toLowerCase() : 'und';
+            inputCantidad.parentNode.appendChild(spanUnidad);
+        }
+
+        totalFormsInput.value = totalForms + 1;
+    }
 
     /* MANEJO DE ELIMINACIÓN DE FILAS EN EDICIÓN */
     function eliminarFilaEditar(btn) {
         const fila = btn.closest('tr');
         const checkboxDelete = fila.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        
         if (checkboxDelete) {
+            // Fila de base de datos: se oculta y Django la elimina al procesar
             checkboxDelete.checked = true;
             fila.style.display = 'none';
         } else {
+            // Fila nueva añadida dinámicamente: se elimina del DOM por completo
             fila.remove();
+            
+            // Sincronizamos los índices de los elementos creados dinámicamente posteriores
+            const totalFormsInput = document.getElementById('id_insumos_receta-TOTAL_FORMS');
+            const filas = document.querySelectorAll('#tabla-ingredientes tbody tr');
+            totalFormsInput.value = filas.length;
+
+            filas.forEach((f, indice) => {
+                f.querySelectorAll('input, select').forEach(input => {
+                    if (input.name) input.name = input.name.replace(/insumos_receta-\d+-/, `insumos_receta-${indice}-`);
+                    if (input.id) input.id = input.id.replace(/id_insumos_receta-\d+-/, `id_insumos_receta-${indice}-`);
+                });
+            });
         }
     }
 
-    /* CONFIRMACIÓN DE GUARDADO CON SWEETALERT (CALCADO DE CREAR + CONTROL DE NOMBRE PROPIO) */
+    /* CONFIRMACIÓN DE GUARDADO CON SWEETALERT */
     function confirmarEdicion() {
         const nombreInput = document.querySelector('input[name="nombre_receta"]');
         const nombreVal = nombreInput ? nombreInput.value.trim() : '';
@@ -218,13 +397,11 @@
         const valorBase = inputBase ? inputBase.value.trim() : '';
         const filas = document.querySelectorAll('#tabla-ingredientes tbody tr');
 
-        // Validación nombre mínimo (calcado de crear)
         if (!nombreVal || nombreVal.length < 3) {
             Swal.fire({...swalConfig, icon: 'warning', title: 'Nombre muy corto', text: 'El nombre debe tener al menos 3 caracteres.'});
             return;
         }
 
-        // Validación nombre duplicado (Solo alerta si cambia el nombre y coincide con OTRA receta del sistema)
         if (nombreVal.toLowerCase() !== nombreOriginalReceta && nombresExistentes.some(n => n.toLowerCase() === nombreVal.toLowerCase())) {
             Swal.fire({...swalConfig, icon: 'error', title: 'Nombre duplicado', text: 'Ya existe otra receta con este nombre.'});
             return;
@@ -239,7 +416,8 @@
             filasVisibles++;
 
             const inputCantidad = filas[i].querySelector('input[name*="cantidad_insumo_base"]');
-            const nombreInsumo = filas[i].querySelector('.input-item-readonly').value;
+            const containerInsumo = filas[i].querySelector('.input-item-readonly');
+            const nombreInsumo = containerInsumo ? containerInsumo.value : 'Insumo';
             const valor = inputCantidad ? inputCantidad.value.trim() : '';
 
             if (valor === '' || parseFloat(valor) <= 0) {
