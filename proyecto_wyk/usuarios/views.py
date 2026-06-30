@@ -1,15 +1,22 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Sum, Count
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
 from django.http import JsonResponse
+from django.utils import timezone
+from datetime import timedelta
 import json
 from .models import Rol, Usuario
 from django.db import connection
 
+# Importación de modelos externos para las estadísticas del dashboard
+from inventario.models import Producto
+from ventas.models import Venta, DetalleVenta
+
 # IMPORTANTE: Ahora importamos los nuevos formularios
 from .forms import LoginForm, RolForm, UsuarioForm
+
 
 # ------------------------------ AUTENTICACIÓN ------------------------------
 def login_view(request):
@@ -67,7 +74,142 @@ def verificar_password_ajax(request):
 # ------------------------------ INICIO ------------------------------
 @login_required
 def inicio(request):
-    return render(request, 'usuarios/inicio.html')
+    rol_usuario = request.user.rol_fk_usuario.rol if request.user.rol_fk_usuario else None
+    contexto = {}
+    hoy = timezone.now().date()
+
+    # ==================== LÓGICA PARA EL ADMINISTRADOR ====================
+    if rol_usuario == 'ADMIN':
+        # --- 1. TOP 5 PRODUCTOS MÁS VENDIDOS ---
+        top_productos = (
+            DetalleVenta.objects.filter(id_venta_fk_det_venta__estado_pago='PAGADA')
+            .values('id_producto_fk_det_venta__nombre_producto')
+            .annotate(total_vendido=Sum('cantidad'))
+            .order_by('-total_vendido')[:5]
+        )
+
+        productos_labels = [item['id_producto_fk_det_venta__nombre_producto'] for item in top_productos]
+        productos_datos = [int(item['total_vendido']) for item in top_productos]
+
+        # --- 2. TENDENCIA DE VENTAS (ÚLTIMOS 7 DÍAS) ---
+        fechas_7_dias = [hoy - timedelta(days=i) for i in range(6, -1, -1)]
+
+        ventas_labels = [fecha.strftime('%d/%m') for fecha in fechas_7_dias]
+        ventas_datos = []
+
+        for fecha in fechas_7_dias:
+            total_dia = Venta.objects.filter(
+                fecha_hora_venta__date=fecha,
+                estado_pago='PAGADA'
+            ).aggregate(total=Sum('total_venta'))['total'] or 0
+            ventas_datos.append(int(total_dia))
+
+        # --- 3. BALANCE DE ESTADOS DE PAGO ---
+        estados_pago = Venta.objects.values('estado_pago').annotate(cantidad=Count('id_venta'))
+
+        estados_dict = {item['estado_pago']: item['cantidad'] for item in estados_pago}
+        estados_labels = ['Pagada', 'Pendiente', 'Cancelada']
+        estados_datos = [
+            estados_dict.get('PAGADA', 0),
+            estados_dict.get('PENDIENTE', 0),
+            estados_dict.get('CANCELADA', 0)
+        ]
+
+        # Serialización segura en formato JSON para que JavaScript pueda interpretarlos
+        contexto.update({
+            'admin_prod_labels': json.dumps(productos_labels),
+            'admin_prod_datos': json.dumps(productos_datos),
+            'admin_ventas_labels': json.dumps(ventas_labels),
+            'admin_ventas_datos': json.dumps(ventas_datos),
+            'admin_estados_labels': json.dumps(estados_labels),
+            'admin_estados_datos': json.dumps(estados_datos),
+        })
+
+    # ==================== LÓGICA PARA PANADERO Y PASTELERO ====================
+    elif rol_usuario in ['PANADERO', 'PASTELERIA', 'PASTELERO']:
+        # 1. Alertas de Stock Crítico (Menos o igual a 10 unidades en vitrina)
+        stock_critico = Producto.objects.filter(
+            estado_producto=True,
+            tipo_producto__in=['PANADERIA', 'PASTELERIA'],
+            cant_exist_producto__lte=10
+        ).order_by('cant_exist_producto')[:8]
+
+        critico_labels = [p.nombre_producto for p in stock_critico]
+        critico_datos = [int(p.cant_exist_producto) for p in stock_critico]
+
+        # 2. Productos más demandados en los últimos 7 días (Planificación de horneo)
+        hace_una_semana = hoy - timedelta(days=7)
+
+        demanda_produccion = (
+            DetalleVenta.objects.filter(
+                id_venta_fk_det_venta__fecha_hora_venta__date__gte=hace_una_semana,
+                id_venta_fk_det_venta__estado_pago='PAGADA',
+                id_producto_fk_det_venta__tipo_producto__in=['PANADERIA', 'PASTELERIA']
+            )
+            .values('id_producto_fk_det_venta__nombre_producto')
+            .annotate(total_pedido=Sum('cantidad'))
+            .order_by('-total_pedido')[:5]
+        )
+
+        demanda_labels = [item['id_producto_fk_det_venta__nombre_producto'] for item in demanda_produccion]
+        demanda_datos = [int(item['total_pedido']) for item in demanda_produccion]
+
+        contexto.update({
+            'prod_critico_labels': json.dumps(critico_labels),
+            'prod_critico_datos': json.dumps(critico_datos),
+            'prod_demanda_labels': json.dumps(demanda_labels),
+            'prod_demanda_datos': json.dumps(demanda_datos),
+        })
+
+    # ==================== LÓGICA PARA EL MESERO ====================
+    elif rol_usuario == 'MESERO':
+        # 1. Monitor de Vitrina: Productos con disponibilidad para ofrecer activamente
+        productos_disponibles = Producto.objects.filter(
+            estado_producto=True,
+            cant_exist_producto__gt=0
+        ).order_by('-cant_exist_producto')[:6]
+
+        vitrina_labels = [p.nombre_producto for p in productos_disponibles]
+        vitrina_datos = [int(p.cant_exist_producto) for p in productos_disponibles]
+
+        # 2. Rendimiento personal: Pedidos creados por este mesero en el día actual
+        total_ordenes_hoy = Venta.objects.filter(
+            id_usuario_fk_venta=request.user,
+            fecha_hora_venta__date=hoy
+        ).count()
+
+        contexto.update({
+            'vitrina_labels': json.dumps(vitrina_labels),
+            'vitrina_datos': json.dumps(vitrina_datos),
+            'total_ordenes_hoy': total_ordenes_hoy,
+        })
+
+    # ==================== LÓGICA PARA EL CAJERO ====================
+    elif rol_usuario == 'CAJERO':
+        # 1. Monitoreo del flujo de caja efectivo de su turno hoy
+        ingresos_hoy = Venta.objects.filter(
+            fecha_hora_venta__date=hoy,
+            estado_pago='PAGADA'
+        ).aggregate(total=Sum('total_venta'))['total'] or 0
+
+        # 2. Estado de cuentas de los pedidos recibidos el día de hoy
+        ventas_cajero_hoy = Venta.objects.filter(fecha_hora_venta__date=hoy).values('estado_pago').annotate(cantidad=Count('id_venta'))
+        cajero_dict = {item['estado_pago']: item['cantidad'] for item in ventas_cajero_hoy}
+
+        cajero_labels = ['Pagada', 'Pendiente', 'Cancelada']
+        cajero_datos = [
+            cajero_dict.get('PAGADA', 0),
+            cajero_dict.get('PENDIENTE', 0),
+            cajero_dict.get('CANCELADA', 0)
+        ]
+
+        contexto.update({
+            'cajero_ingresos_hoy': int(ingresos_hoy),
+            'cajero_labels': json.dumps(cajero_labels),
+            'cajero_datos': json.dumps(cajero_datos),
+        })
+
+    return render(request, 'usuarios/inicio.html', contexto)
 
 
 # ------------------------------ FUNCIONES DE ROLES (CRUD - SOLO ADMIN) ------------------------------
@@ -152,7 +294,8 @@ def eliminar_rol(request, id_rol):
             rol.delete()
             messages.success(request, f"Rol '{nombre_eliminado}' eliminado definitivamente.")
         except ProtectedError:
-            messages.error(request, f"Acceso denegado. No se puede eliminar '{rol.rol}' porque tiene usuarios vinculados.")
+            messages.error(request,
+                           f"Acceso denegado. No se puede eliminar '{rol.rol}' porque tiene usuarios vinculados.")
 
     return redirect('lista_roles')
 

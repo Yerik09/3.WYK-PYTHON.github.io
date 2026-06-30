@@ -5,6 +5,57 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/dashboard-inicio.css' %}">
+    <style>
+        /* Estilos base temporales para la cuadrícula del Dashboard dinámico */
+        .dashboard-grid-wyk {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        .card-dashboard-wyk {
+            background: #1a0a00;
+            border: 1px solid rgba(245, 166, 35, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            color: #ffffff;
+        }
+        .card-dashboard-wyk h3 {
+            color: #f5a623;
+            font-size: 1.1rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(245, 166, 35, 0.1);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chart-container-wyk {
+            position: relative;
+            width: 100%;
+            height: 220px;
+        }
+        /* Estilos agregados para los indicadores KPI de Mesero y Cajero */
+        .kpi-container-wyk {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: calc(100% - 40px);
+            text-align: center;
+        }
+        .kpi-value-wyk {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #5cb85c;
+            margin: 10px 0;
+        }
+        .kpi-text-wyk {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -15,43 +66,320 @@
     </div>
 </div>
 
-<div class="profile-card">
-    <div class="profile-image-container">
-        <div class="profile-image" id="profileImage">
-            {{ user.nombre|slice:":1"|upper }}
+<div class="dashboard-grid-wyk">
+
+    {% if user.rol_fk_usuario.rol == 'ADMIN' %}
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-chart-bar"></i> Productos Más Vendidos</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartProductosWyk"></canvas>
+            </div>
         </div>
-        <div class="online-indicator"></div>
-    </div>
-
-    <div class="profile-name">{{ user.nombre }}</div>
-    <div class="profile-company">{{ user.rol_fk_usuario.rol|default:"Administrador" }} - WYK</div>
-
-    <div class="contact-list">
-        <div class="contact-item">
-            <span class="contact-label">
-                <i class="fas fa-id-card"></i> Doc
-            </span>
-            <span class="contact-value">{{ user.num_doc }}</span>
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-chart-line"></i> Tendencia de Ventas Semanal</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartVentasWyk"></canvas>
+            </div>
         </div>
-
-        <div class="contact-item">
-            <span class="contact-label">
-                <i class="fas fa-phone"></i> Teléfono
-            </span>
-            <span class="contact-value">+57 {{ user.tel_usuario }}</span>
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-chart-pie"></i> Balance de Estados de Pago</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartEstadosWyk"></canvas>
+            </div>
         </div>
 
-        <div class="contact-item">
-            <span class="contact-label">
-                <i class="fas fa-envelope"></i> Email
-            </span>
-            <span class="contact-value">{{ user.email_usuario }}</span>
+    {% elif user.rol_fk_usuario.rol == 'PANADERO' or user.rol_fk_usuario.rol == 'PASTELERO' %}
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-exclamation-triangle" style="color: #d9534f;"></i> Alertas de Production Inmediata (Stock Crítico Mostrador)</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartCriticoWyk"></canvas>
+            </div>
         </div>
-    </div>
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-history"></i> Tendencia de Demanda de Producción</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartDemandaWyk"></canvas>
+            </div>
+        </div>
+
+    {% elif user.rol_fk_usuario.rol == 'MESERO' %}
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-eye"></i> Monitor de Vitrina en Tiempo Real</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartVitrinaWyk"></canvas>
+            </div>
+        </div>
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-tasks"></i> Mi Rendimiento del Día</h3>
+            <div class="kpi-container-wyk">
+                <div class="kpi-value-wyk" style="color: #f5a623;">{{ total_ordenes_hoy }}</div>
+                <div class="kpi-text-wyk">Órdenes registradas y atendidas el día de hoy</div>
+            </div>
+        </div>
+
+    {% elif user.rol_fk_usuario.rol == 'CAJERO' %}
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-money-bill-wave"></i> Flujo de Caja (Hoy)</h3>
+            <div class="kpi-container-wyk">
+                <div class="kpi-value-wyk">${{ cajero_ingresos_hoy }}</div>
+                <div class="kpi-text-wyk">Total de ingresos en efectivo recaudados hoy</div>
+            </div>
+        </div>
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-cash-register"></i> Ventas del Turno (Hoy)</h3>
+            <div class="chart-container-wyk">
+                <canvas id="chartCajeroWyk"></canvas>
+            </div>
+        </div>
+
+    {% else %}
+        <div class="card-dashboard-wyk">
+            <h3><i class="fas fa-cash-register"></i> Resumen Operativo</h3>
+            <p style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">Panel de control general del punto de venta.</p>
+        </div>
+    {% endif %}
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {% if user.rol_fk_usuario.rol == 'ADMIN' %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Lectura segura de los datos JSON inyectados desde el backend
+            const prodLabels = {{ admin_prod_labels|safe }};
+            const prodDatos = {{ admin_prod_datos|safe }};
+
+            const ventasLabels = {{ admin_ventas_labels|safe }};
+            const ventasDatos = {{ admin_ventas_datos|safe }};
+
+            const estadosLabels = {{ admin_estados_labels|safe }};
+            const estadosDatos = {{ admin_estados_datos|safe }};
+
+            const fontStyle = { family: "'Inter', sans-serif", size: 11 };
+
+            // 1. Gráfica de Barras para Productos más vendidos
+            const ctxProd = document.getElementById('chartProductosWyk').getContext('2d');
+            new Chart(ctxProd, {
+                type: 'bar',
+                data: {
+                    labels: prodLabels.length ? prodLabels : ['Sin registros'],
+                    datasets: [{
+                        label: 'Cantidades',
+                        data: prodDatos.length ? prodDatos : [0],
+                        backgroundColor: 'rgba(245, 166, 35, 0.7)',
+                        borderColor: '#f5a623',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: fontStyle } },
+                        y: { grid: { display: false }, ticks: { color: '#ffffff', font: fontStyle } }
+                    }
+                }
+            });
+
+            // 2. Gráfica de Líneas para Tendencia de Ventas
+            const ctxVentas = document.getElementById('chartVentasWyk').getContext('2d');
+            new Chart(ctxVentas, {
+                type: 'line',
+                data: {
+                    labels: ventasLabels,
+                    datasets: [{
+                        label: 'Ingresos ($)',
+                        data: ventasDatos,
+                        backgroundColor: 'rgba(92, 184, 92, 0.1)',
+                        borderColor: '#5cb85c',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#5cb85c'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.6)', font: fontStyle } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: fontStyle } }
+                    }
+                }
+            });
+
+            // 3. Gráfica de Dona para Balance de Estados de Pago
+            const ctxEstados = document.getElementById('chartEstadosWyk').getContext('2d');
+            new Chart(ctxEstados, {
+                type: 'doughnut',
+                data: {
+                    labels: estadosLabels,
+                    datasets: [{
+                        data: estadosDatos,
+                        backgroundColor: ['#5cb85c', '#f0ad4e', '#d9534f'],
+                        borderWidth: 2,
+                        borderColor: '#1a0a00'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#ffffff', font: fontStyle, boxWidth: 12 }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
+    {% if user.rol_fk_usuario.rol == 'PANADERO' or user.rol_fk_usuario.rol == 'PASTELERO' %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const criticoLabels = {{ prod_critico_labels|safe }};
+            const criticoDatos = {{ prod_critico_datos|safe }};
+
+            const demandaLabels = {{ prod_demanda_labels|safe }};
+            const demandaDatos = {{ prod_demanda_datos|safe }};
+
+            const fontStyle = { family: "'Inter', sans-serif", size: 11 };
+
+            // 1. Gráfica de Stock Crítico (Rojo/Naranja de alerta)
+            const ctxCritico = document.getElementById('chartCriticoWyk').getContext('2d');
+            new Chart(ctxCritico, {
+                type: 'bar',
+                data: {
+                    labels: criticoLabels.length ? criticoLabels : ['Todo con buen stock'],
+                    datasets: [{
+                        label: 'Unidades en Vitrina',
+                        data: criticoDatos.length ? criticoDatos : [0],
+                        backgroundColor: 'rgba(217, 83, 79, 0.7)',
+                        borderColor: '#d9534f',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#ffffff', font: fontStyle } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: fontStyle }, suggestMax: 10 }
+                    }
+                }
+            });
+
+            // 2. Gráfica de Demanda Semanal (Barras Horizontales Doradas)
+            const ctxDemanda = document.getElementById('chartDemandaWyk').getContext('2d');
+            new Chart(ctxDemanda, {
+                type: 'bar',
+                data: {
+                    labels: demandaLabels.length ? demandaLabels : ['Sin rotación semanal'],
+                    datasets: [{
+                        label: 'Unidades Vendidas',
+                        data: demandaDatos.length ? demandaDatos : [0],
+                        backgroundColor: 'rgba(245, 166, 35, 0.7)',
+                        borderColor: '#f5a623',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: fontStyle } },
+                        y: { grid: { display: false }, ticks: { color: '#ffffff', font: fontStyle } }
+                    }
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
+    {% if user.rol_fk_usuario.rol == 'MESERO' %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const vitrinaLabels = {{ vitrina_labels|safe }};
+            const vitrinaDatos = {{ vitrina_datos|safe }};
+            const fontStyle = { family: "'Inter', sans-serif", size: 11 };
+
+            const ctxVitrina = document.getElementById('chartVitrinaWyk').getContext('2d');
+            new Chart(ctxVitrina, {
+                type: 'bar',
+                data: {
+                    labels: vitrinaLabels.length ? vitrinaLabels : ['Sin stock disponible'],
+                    datasets: [{
+                        label: 'Unidades Disponibles',
+                        data: vitrinaDatos.length ? vitrinaDatos : [0],
+                        backgroundColor: 'rgba(92, 184, 92, 0.7)',
+                        borderColor: '#5cb85c',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)', font: fontStyle } },
+                        y: { grid: { display: false }, ticks: { color: '#ffffff', font: fontStyle } }
+                    }
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
+    {% if user.rol_fk_usuario.rol == 'CAJERO' %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cajeroLabels = {{ cajero_labels|safe }};
+            const cajeroDatos = {{ cajero_datos|safe }};
+            const fontStyle = { family: "'Inter', sans-serif", size: 11 };
+
+            const ctxCajero = document.getElementById('chartCajeroWyk').getContext('2d');
+            new Chart(ctxCajero, {
+                type: 'doughnut',
+                data: {
+                    labels: cajeroLabels,
+                    datasets: [{
+                        data: cajeroDatos,
+                        backgroundColor: ['#5cb85c', '#f0ad4e', '#d9534f'],
+                        borderWidth: 2,
+                        borderColor: '#1a0a00'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#ffffff', font: fontStyle, boxWidth: 12 }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
     {% if messages %}
         <script>
             document.addEventListener('DOMContentLoaded', function() {
@@ -64,7 +392,6 @@
                             confirmButtonColor: '#e74c3c'
                         });
                     {% else %}
-                        // Usamos la función del dashboard.js si ya cargó, o un Toast de respaldo
                         if (typeof showNotification === 'function') {
                             showNotification('{{ message|escapejs }}', '{{ message.tags }}');
                         }

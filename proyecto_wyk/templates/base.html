@@ -19,6 +19,7 @@
             padding: 15px 30px;
             background: #1a0a00;
             border-bottom: 1px solid rgba(245, 166, 35, 0.1);
+            gap: 20px;
         }
 
         .notif-wrapper-wyk {
@@ -130,6 +131,132 @@
             color: #5cb85c;
             margin-bottom: 8px;
         }
+
+        /* --- ESTILOS ADICIONADOS PARA EL MENÚ DE PERFIL --- */
+        .user-profile-wrapper-wyk {
+            position: relative;
+            display: inline-block;
+        }
+
+        .btn-profile-wyk {
+            background: rgba(245, 166, 35, 0.08);
+            border: 1px solid rgba(245, 166, 35, 0.2);
+            border-radius: 50px;
+            padding: 5px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-profile-wyk:hover {
+            background: rgba(245, 166, 35, 0.15);
+            border-color: #f5a623;
+        }
+
+        .avatar-circle-wyk {
+            width: 28px;
+            height: 28px;
+            background: #f5a623;
+            color: #1a0a00;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .username-text-wyk {
+            color: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dropdown-profile-wyk {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 45px;
+            width: 240px;
+            background: #1a0a00;
+            border: 1px solid rgba(245, 166, 35, 0.2);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 1000;
+            padding: 0;
+            list-style: none;
+        }
+
+        .dropdown-profile-wyk.show {
+            display: block;
+        }
+
+        .info-user-header-wyk {
+            padding: 15px;
+            border-bottom: 1px solid rgba(245, 166, 35, 0.1);
+            background: rgba(245, 166, 35, 0.03);
+        }
+
+        .info-user-header-wyk .name-wyk {
+            display: block;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .info-user-header-wyk .rol-wyk {
+            display: block;
+            color: #f5a623;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        .info-user-body-wyk {
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .info-item-wyk {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-item-wyk i {
+            color: #f5a623;
+            width: 14px;
+            text-align: center;
+        }
+
+        .btn-logout-dropdown-wyk {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            color: #d9534f;
+            font-size: 0.85rem;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s ease;
+            width: 100%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .btn-logout-dropdown-wyk:hover {
+            background: rgba(217, 83, 79, 0.08);
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -240,7 +367,7 @@
                 {% endif %}
             </div>
 
-            <div class="sidebar-footer">
+            <div class="sidebar-footer" style="display: none;">
                 <form id="logout-form" action="{% url 'logout' %}" method="post" style="display: none;">
                     {% csrf_token %}
                 </form>
@@ -294,6 +421,39 @@
                     </ul>
                 </div>
                 {% endif %}
+
+                <div class="user-profile-wrapper-wyk">
+                    <button class="btn-profile-wyk" id="btnProfileWyk" title="Ver Perfil">
+                        <div class="avatar-circle-wyk">
+                            {{ user.nombre|slice:":1"|upper }}
+                        </div>
+                        <span class="username-text-wyk">{{ user.nombre }}</span>
+                        <i class="fas fa-chevron-down" style="color: rgba(255,255,255,0.4); font-size: 0.75rem;"></i>
+                    </button>
+
+                    <ul class="dropdown-profile-wyk" id="dropdownProfileWyk">
+                        <li class="info-user-header-wyk">
+                            <span class="name-wyk">{{ user.nombre }}</span>
+                            <span class="rol-wyk">{{ user.rol_fk_usuario.rol|default:"Colaborador" }}</span>
+                        </li>
+                        <li class="info-user-body-wyk">
+                            <div class="info-item-wyk">
+                                <i class="fas fa-id-card"></i> Doc: {{ user.num_doc }}
+                            </div>
+                            <div class="info-item-wyk">
+                                <i class="fas fa-phone"></i> +57 {{ user.tel_usuario }}
+                            </div>
+                            <div class="info-item-wyk">
+                                <i class="fas fa-envelope"></i> {{ user.email_usuario }}
+                            </div>
+                        </li>
+                        <li>
+                            <button class="btn-logout-dropdown-wyk" onclick="document.getElementById('logout-link').click();">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </header>
 
             <section class="content-body">
@@ -307,25 +467,41 @@
     <script src="{% static 'js/logout.js' %}"></script>
 
     <script>
-        // --- INTERACCIÓN INTERNA DEL DROPDOWN DE NOTIFICACIONES ---
+        // --- INTERACCIÓN INTERNA DEL DROPDOWN DE NOTIFICACIONES Y PERFIL ---
         document.addEventListener('DOMContentLoaded', function() {
             const btnNotif = document.getElementById('btnNotifWyk');
             const dropdownNotif = document.getElementById('dropdownNotifWyk');
 
+            const btnProfile = document.getElementById('btnProfileWyk');
+            const dropdownProfile = document.getElementById('dropdownProfileWyk');
+
+            // Lógica de Notificaciones
             if (btnNotif && dropdownNotif) {
-                // Alternar visibilidad al hacer click en la campana
                 btnNotif.addEventListener('click', function(e) {
                     e.stopPropagation();
+                    if(dropdownProfile) dropdownProfile.classList.remove('show');
                     dropdownNotif.classList.toggle('show');
                 });
+            }
 
-                // Ocultar el menú si se hace click fuera de él
-                document.addEventListener('click', function(e) {
-                    if (!dropdownNotif.contains(e.target) && e.target !== btnNotif && !btnNotif.contains(e.target)) {
-                        dropdownNotif.classList.remove('show');
-                    }
+            // Lógica de Perfil de Usuario
+            if (btnProfile && dropdownProfile) {
+                btnProfile.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if(dropdownNotif) dropdownNotif.classList.remove('show');
+                    dropdownProfile.classList.toggle('show');
                 });
             }
+
+            // Ocultar menús al hacer click fuera de ellos
+            document.addEventListener('click', function(e) {
+                if (dropdownNotif && !dropdownNotif.contains(e.target) && e.target !== btnNotif && (!btnNotif || !btnNotif.contains(e.target))) {
+                    dropdownNotif.classList.remove('show');
+                }
+                if (dropdownProfile && !dropdownProfile.contains(e.target) && e.target !== btnProfile && (!btnProfile || !btnProfile.contains(e.target))) {
+                    dropdownProfile.classList.remove('show');
+                }
+            });
         });
     </script>
     {% block extra_js %}{% endblock %}
