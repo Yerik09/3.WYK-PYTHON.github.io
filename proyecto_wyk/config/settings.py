@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*', '.railway.app']
 
 # Application definition
 
@@ -84,17 +84,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Si estás en tu PC local (donde no existe DATABASE_URL), usará tus variables del .env
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 if os.environ.get('DATABASE_URL'):
     # Configuración para producción (Railway)
+    # dj_database_url auto-detectará si es MySQL o Postgres según lo que crees en Railway
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600,
-            engine='django.db.backends.postgresql'
+            conn_max_age=600
         )
     }
 else:
@@ -146,17 +142,17 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-#Django busca la carpeta static(css,js,images) dentro de las app
-STATIC_URL = 'static/'
+# Cambiado a ruta absoluta para evitar conflictos de MIME type
+STATIC_URL = '/static/'
 
 #Le dice a Django que ademas de buscar en las app busque la carpeta static en la raiz del proyecto
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# --- AGREGAR ESTA LÍNEA PARA PRODUCCIÓN ---
+# --- CONFIGURACIÓN PARA PRODUCCIÓN ---
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # --- CONFIGURACIÓN DE ARCHIVOS MULTIMEDIA (IMÁGENES) ---
@@ -182,4 +178,9 @@ LOGOUT_REDIRECT_URL = 'login'
 # Permitir que Django acepte las solicitudes del dominio de Railway de forma segura
 CSRF_TRUSTED_ORIGINS = [
     'https://3wyk-pythongithubio-production.up.railway.app',
+    'https://3wyk-pythongithubio-production-4ced.up.railway.app',
 ]
+
+# Si Railway genera un dominio estático alternativo, lo agregamos de forma dinámica para evitar bloqueos de CSRF
+if os.environ.get('RAILWAY_STATIC_URL'):
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ.get('RAILWAY_STATIC_URL')}")
