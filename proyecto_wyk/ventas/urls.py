@@ -9,6 +9,9 @@ urlpatterns = [
     # dominio.com/ventas/crear/
     path('crear/', views.crear_venta, name='crear_venta'),
 
+    # dominio.com/ventas/editar/1/
+    path('editar/<int:id_venta>/', views.editar_venta, name='editar_venta'),
+
     # dominio.com/ventas/detalle/1/
     path('detalle/<int:id_venta>/', views.detalle_venta, name='detalle_venta'),
 

@@ -139,7 +139,7 @@
                 {% if venta.estado_pago == 'PAGADA' %}estado-pagada
                 {% elif venta.estado_pago == 'PENDIENTE' %}estado-pendiente
                 {% else %}estado-cancelada{% endif %}">
-                <i class="fas fa-money-bill-wave me-2" style="font-size: 0.7rem;"></i>{{ venta.get_estado_pago_display }}
+                <i class="fas fa-money-bill-wave me-2" style="font-size: 0.7rem;"></i>{{ venta.estado_pago }}
             </div>
         </div>
     </div>
@@ -155,7 +155,7 @@
         </div>
         <div class="info-item">
             <label><i class="fas fa-truck"></i> Estado Entrega</label>
-            <span style="color: var(--oro-brillante);">{{ venta.get_estado_pedido_display }}</span>
+            <span style="color: var(--oro-brillante);">{{ venta.estado_pedido }}</span>
         </div>
 
         {% if venta.fecha_cambio_estado %}
@@ -187,16 +187,17 @@
                 <tr>
                     <th>Descripción del Producto</th>
                     <th style="text-align: center;">Cantidad</th>
-                    <th style="text-align: right;">Precio Unit.</th>
-                    <th style="text-align: right;">Subtotal</th>
+                    <th style="text-align: right; width: 150px;">Precio Unit.</th>
+                    <th style="text-align: right; width: 150px;">Subtotal</th>
                 </tr>
             </thead>
             <tbody>
                 {% for d in venta.detalles.all %}
                 <tr>
-                    <td style="font-weight: 700; color: #fff;">{{ d.id_producto_fk_det_venta.nombre_producto }}</td>
+                    <td style="font-weight: 700; color: #fff;">{{ d.id_producto_fk_det_venta.nombre_producto|upper }}</td>
                     <td style="text-align: center; font-weight: 800; color: #fff;">{{ d.cantidad }}</td>
-                    <td style="text-align: right; color: #bbb;">$ {{ d.id_producto_fk_det_venta.precio_venta|floatformat:0 }}</td>
+                    {# CORRECCIÓN DE LA VARIABLE: valor_unitario_product en vez de precio_venta #}
+                    <td style="text-align: right; color: #bbb;">$ {{ d.id_producto_fk_det_venta.valor_unitario_product|floatformat:0 }}</td>
                     <td style="text-align: right; font-weight: 800; color: var(--oro-brillante);">
                         $ {{ d.sub_total|floatformat:0 }}
                     </td>

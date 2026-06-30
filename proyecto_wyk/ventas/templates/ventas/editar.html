@@ -1,0 +1,519 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Venta #{{ venta.id_venta }} - WYK{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/dashboard-formularios-crear-mov.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-formularios.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard-tablas.css' %}">
+
+    <style>
+        .unit-subtitle { font-size: 0.7rem; color: rgba(255, 255, 255, 0.5); text-transform: lowercase; display: block; margin-top: 2px; }
+        .fila-seleccionable { cursor: pointer; transition: 0.3s; }
+        .fila-seleccionable:hover { background: rgba(245, 166, 35, 0.1) !important; }
+
+        .modal-body { max-height: 450px; overflow-y: auto !important; padding: 0 !important; }
+
+        .tabla-productos input {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: white !important;
+            border: 1px solid rgba(245, 166, 35, 0.3) !important;
+            padding: 8px !important;
+            width: 100%;
+        }
+
+        /* Estilo de error de stock igual a producción */
+        .stock-insuficiente {
+            border: 1px solid #ff8a8a !important;
+            background: rgba(255, 138, 138, 0.1) !important;
+            box-shadow: 0 0 5px rgba(255, 138, 138, 0.5);
+        }
+
+        .tabla-productos select {
+            pointer-events: none;
+            background: rgba(0,0,0,0.2) !important;
+            border: none;
+            color: #f5a623;
+            -webkit-appearance: none; appearance: none;
+        }
+
+        .total-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(245, 166, 35, 0.05);
+            border-radius: 8px;
+            text-align: right;
+            border: 1px solid rgba(245, 166, 35, 0.2);
+        }
+
+        .total-text { font-size: 1.5rem; color: #f5a623; font-weight: 700; }
+
+        .select-mesa-wyk {
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: 1px solid rgba(245, 166, 35, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            outline: none;
+            transition: 0.3s;
+        }
+        .select-mesa-wyk:focus {
+            border-color: #f5a623;
+            box-shadow: 0 0 5px rgba(245, 166, 35, 0.4);
+        }
+        .select-mesa-wyk option {
+            background: #1a0a00;
+            color: white;
+        }
+
+        .contador-textarea-container {
+            text-align: right;
+            font-size: 0.85rem;
+            color: #f5a623;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        /* Badge informativo sobre estados no editables */
+        .badge-info-wyk {
+            background: rgba(245, 166, 35, 0.1);
+            color: #f5a623;
+            border: 1px solid rgba(245, 166, 35, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="compra-container">
+    <a href="{% url 'lista_ventas' %}" class="volver" style="color: var(--dorado-wyk); text-decoration: none; display: inline-block; margin-bottom: 15px;">
+        <i class="fas fa-arrow-left"></i> Volver al Historial
+    </a>
+
+    <h2 class="titulo-seccion"><i class="fas fa-edit"></i> Modificar Orden de Venta #{{ venta.id_venta }}</h2>
+
+    <form method="post" id="formEditarVenta">
+        {% csrf_token %}
+
+        <div class="form-card-wyk">
+            <div class="form-grid">
+                {# Manejo condicional de mesa según Rol #}
+                {% if user.rol_fk_usuario.rol == 'CAJERO' %}
+                    <input type="hidden" name="numero_mesa" id="id_numero_mesa" value="{{ form.numero_mesa.value|default:'' }}">
+                    <div class="form-group">
+                        <label><i class="fas fa-info-circle"></i> Tipo de Venta</label>
+                        <input type="text" class="input-wyk" value="VENTA DIRECTA (MOSTRADOR)" readonly style="opacity: 0.8; color: #28a745; border-color: #28a745;">
+                    </div>
+                {% else %}
+                    <div class="form-group">
+                        <label><i class="fas fa-chair"></i> Número de Mesa</label>
+                        <select name="numero_mesa" id="id_numero_mesa" class="select-mesa-wyk">
+                            <option value="" {% if not form.numero_mesa.value %}selected{% endif %}>---------</option>
+                            {% for i in "123456789" %}
+                                <option value="{{ i }}" {% if form.numero_mesa.value|stringformat:"s" == i %}selected{% endif %}>Mesa {{ i }}</option>
+                            {% endfor %}
+                            <option value="10" {% if form.numero_mesa.value|stringformat:"s" == "10" %}selected{% endif %}>Mesa 10</option>
+                            <option value="11" {% if form.numero_mesa.value|stringformat:"s" == "11" %}selected{% endif %}>Mesa 11</option>
+                            <option value="12" {% if form.numero_mesa.value|stringformat:"s" == "12" %}selected{% endif %}>Mesa 12</option>
+                            <option value="13" {% if form.numero_mesa.value|stringformat:"s" == "13" %}selected{% endif %}>Mesa 13</option>
+                            <option value="14" {% if form.numero_mesa.value|stringformat:"s" == "14" %}selected{% endif %}>Mesa 14</option>
+                        </select>
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label><i class="fas fa-info-circle"></i> Estado Actual del Pedido</label>
+                    <div class="badge-info-wyk mt-1">
+                        <i class="fas fa-clock"></i> {{ venta.estado_pedido }} / {{ venta.estado_pago }}
+                    </div>
+                    {# Inputs ocultos requeridos por la estructura del form #}
+                    <input type="hidden" name="estado_pedido" value="{{ venta.estado_pedido }}">
+                    <input type="hidden" name="estado_pago" value="{{ venta.estado_pago }}">
+                </div>
+            </div>
+
+            <div class="form-group" id="contenedor-observaciones">
+                <label><i class="fas fa-align-left"></i> Observaciones</label>
+                {{ form.descripcion }}
+                <div class="contador-textarea-container">
+                    <span id="char-count">0</span> / 200
+                </div>
+            </div>
+        </div>
+
+        <div class="productos-card">
+            <button type="button" class="btn-add-item" onclick="abrirModalProductos()">
+                <i class="fas fa-plus"></i> Añadir Producto al Carrito
+            </button>
+            <h3 style="margin-bottom: 20px;">Detalle de la Venta</h3>
+
+            <div class="table-wrap">
+                {# Renderear el management_form obligatorio de Django con el prefijo correcto #}
+                {{ formset.management_form }}
+
+                <table class="tabla-productos" id="tabla-detalles">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th style="width: 150px;">Precio Unit.</th>
+                            <th style="width: 150px;">Cantidad</th>
+                            <th style="width: 150px;">Subtotal</th>
+                            <th style="width: 80px;" class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in formset %}
+                        <tr class="fila-detalle-existente">
+                            {# ID obligatorio de la instancia de DetalleVenta para Django #}
+                            {% for hidden in f.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            <td>{{ f.id_producto_fk_det_venta }}</td>
+                            <td>
+                                <input type="text" class="precio-unitario" readonly style="opacity: 0.7;" 
+                                       id="precio_init_{{ forloop.index0 }}">
+                            </td>
+                            <td>{{ f.cantidad }}</td>
+                            <td>
+                                <input type="text" class="subtotal-fila" readonly style="color: #f5a623; font-weight: bold;">
+                            </td>
+                            <td class="text-center">
+                                {# Campo de borrado nativo de Django, oculto visualmente #}
+                                <span style="display: none;">{{ f.DELETE }}</span>
+                                <button type="button" class="btn-eliminar-fila" onclick="eliminarFilaExistente(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <template id="empty-row-detalle">
+                    <tr>
+                        <td>{{ formset.empty_form.id_producto_fk_det_venta }}</td>
+                        <td><input type="text" class="precio-unitario" readonly style="opacity: 0.7;"></td>
+                        <td>{{ formset.empty_form.cantidad }}</td>
+                        <td><input type="text" class="subtotal-fila" readonly style="color: #f5a623; font-weight: bold;"></td>
+                        <td class="text-center">
+                            <button type="button" class="btn-eliminar-fila" onclick="eliminarFilaNueva(this)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </div>
+
+            <div class="total-container">
+                <span style="color: white; opacity: 0.8; margin-right: 15px;">TOTAL FINAL:</span>
+                <span class="total-text" id="gran-total">$ {{ venta.total_venta|floatformat:0 }}</span>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button type="button" class="btn-guardar-wyk" onclick="confirmarEdicion()">
+                <i class="fas fa-save"></i> Actualizar Orden
+            </button>
+        </div>
+    </form>
+</div>
+
+{# Modal Selector de Productos #}
+<div class="modal fade modal-wyk-custom" id="modalProductos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-wyk">
+                <h5 class="modal-title text-gold"><i class="fas fa-bread-slice me-2"></i> Seleccionar Producto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-search-wrapper">
+                <div class="search-container">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="busquedaProducto" class="form-control" placeholder="Buscar por nombre...">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table-wyk mb-0" id="tablaSelector">
+                    <thead>
+                        <tr>
+                            <th class="text-center">ID</th>
+                            <th>PRODUCTO</th>
+                            <th class="text-center">PRECIO</th>
+                            <th class="text-center">STOCK DISPONIBLE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pr in productos %}
+                        <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}" data-precio="{{ pr.valor_unitario_product }}" data-stock="{{ pr.cant_exist_producto }}">
+                            <td class="text-center text-gold">#{{ pr.id_producto }}</td>
+                            <td class="text-white">{{ pr.nombre_producto }}</td>
+                            <td class="text-center text-gold fw-bold">$ {{ pr.valor_unitario_product }}</td>
+                            <td class="text-center">
+                                <span class="badge-nivel">{{ pr.cant_exist_producto }}</span>
+                                <span class="unit-subtitle">unidades</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const swalConfig = { background: '#1a0a00', color: '#fff', confirmButtonColor: '#f5a623', heightAuto: false };
+    
+    // Mapeo global de productos desde el backend para agilizar búsquedas y asignación de stock previo en JS
+    const catalogoProductos = {
+        {% for pr in productos %}
+            "{{ pr.id_producto }}": { precio: {{ pr.valor_unitario_product }}, stock: {{ pr.cant_exist_producto }}, nombre: "{{ pr.nombre_producto|escapejs }}" },
+        {% endfor %}
+    };
+
+    function inicializarContadorObservaciones() {
+        const contenedor = document.getElementById('contenedor-observaciones');
+        if (!contenedor) return;
+        const textareaDesc = contenedor.querySelector('textarea') || contenedor.querySelector('input[type="text"]');
+        const contadorSpan = document.getElementById('char-count');
+
+        if (textareaDesc && contadorSpan) {
+            textareaDesc.setAttribute('maxlength', '200');
+            const actualizarContador = () => { contadorSpan.innerText = textareaDesc.value.length; };
+            textareaDesc.addEventListener('input', actualizarContador);
+            textareaDesc.addEventListener('keyup', actualizarContador);
+            actualizarContador();
+        }
+    }
+
+    // Precarga y configuración de filas ya guardadas en la BD
+    function precargarFilasExistentes() {
+        document.querySelectorAll('#tabla-detalles tbody tr').forEach(row => {
+            const selectProd = row.querySelector('select');
+            if (selectProd && selectProd.value) {
+                const itemData = catalogoProductos[selectProd.value];
+                if (itemData) {
+                    row.querySelector('.precio-unitario').value = `$ ${itemData.precio}`;
+                    const inputCant = row.querySelector('.cantidad-input');
+                    
+                    // Al estar editando, el stock máximo real disponible es el stock en bodega + lo que ya tenía reservado
+                    const cantOriginal = parseFloat(inputCant.value) || 0;
+                    const stockMaximoPermitido = itemData.stock + cantOriginal;
+
+                    inputCant.setAttribute('data-precio', itemData.precio);
+                    inputCant.setAttribute('data-stock-max', stockMaximoPermitido);
+
+                    configurarEventosCantidad(inputCant);
+                    const subtotal = itemData.precio * cantOriginal;
+                    row.querySelector('.subtotal-fila').value = `$ ${subtotal.toFixed(0)}`;
+                }
+            }
+        });
+        actualizarTotalGlobal();
+    }
+
+    function configurarEventosCantidad(inputCant) {
+        inputCant.addEventListener('keydown', function(e) {
+            const teclasEspeciales = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Enter'];
+            if (['-', '.', ',', 'e', 'E'].includes(e.key)) { e.preventDefault(); return; }
+            if (!teclasEspeciales.includes(e.key) && this.value.length >= 3) { e.preventDefault(); }
+        });
+
+        inputCant.addEventListener('input', function() {
+            this.value = this.value.replace(/[-.,eE]/g, '');
+            if (this.value.length > 3) { this.value = this.value.slice(0, 3); }
+            
+            const precio = parseFloat(this.getAttribute('data-precio'));
+            const cant = parseFloat(this.value) || 0;
+            this.closest('tr').querySelector('.subtotal-fila').value = `$ ${(precio * cant).toFixed(0)}`;
+            
+            validarStockFila(this);
+            actualizarTotalGlobal();
+        });
+    }
+
+    function validarStockFila(input) {
+        const stockMax = parseFloat(input.getAttribute('data-stock-max'));
+        const valorIngresado = parseFloat(input.value);
+
+        if (valorIngresado > stockMax) {
+            input.classList.add('stock-insuficiente');
+            Swal.fire({
+                ...swalConfig,
+                icon: 'warning',
+                title: 'Stock Insuficiente',
+                text: `Excedes las existencias físicas. Máximo disponible (incluyendo reserva): ${stockMax} u.`,
+                toast: true,
+                position: 'top-end',
+                timer: 4000,
+                showConfirmButton: false
+            });
+        } else {
+            input.classList.remove('stock-insuficiente');
+        }
+    }
+
+    function abrirModalProductos() {
+        new bootstrap.Modal(document.getElementById('modalProductos')).show();
+    }
+
+    document.getElementById('busquedaProducto').addEventListener('keyup', function() {
+        const term = this.value.toLowerCase();
+        document.querySelectorAll('#tablaSelector tbody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(term) ? "" : "none";
+        });
+    });
+
+    document.querySelectorAll('#tablaSelector tbody tr').forEach(fila => {
+        fila.addEventListener('click', function() {
+            agregarFilaProducto(this.dataset.id, this.dataset.precio, this.dataset.stock);
+            bootstrap.Modal.getInstance(document.getElementById('modalProductos')).hide();
+        });
+    });
+
+    function agregarFilaProducto(id, precio, stock) {
+        // Validación de duplicados (Ignora filas que están marcadas para borrado)
+        const inputsExistentes = document.querySelectorAll('#tabla-detalles tbody tr:not([style*="display: none"]) select');
+        for (let select of inputsExistentes) {
+            if (select.value == id) {
+                const nombreItem = document.querySelector(`tr[data-id="${id}"] td.text-white`)?.innerText || "el producto";
+
+                Swal.fire({
+                    ...swalConfig,
+                    icon: 'error',
+                    title: 'Producto Duplicado',
+                    html: `El producto <b style="color: #f5a623;">${nombreItem.toUpperCase()}</b> ya está agregado al detalle.<br>Modifica su cantidad si deseas llevar más.`,
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+        }
+
+        const totalFormsInput = document.getElementById('id_detalles_set-TOTAL_FORMS');
+        const count = parseInt(totalFormsInput.value);
+        const template = document.getElementById('empty-row-detalle');
+
+        const content = template.content.cloneNode(true);
+        const tr = content.querySelector('tr');
+        tr.innerHTML = tr.innerHTML.replace(/__prefix__/g, count);
+
+        document.querySelector('#tabla-detalles tbody').appendChild(tr);
+
+        const row = document.querySelector('#tabla-detalles tbody').lastElementChild;
+        row.querySelector('select').value = id;
+        row.querySelector('.precio-unitario').value = `$ ${precio}`;
+
+        const inputCant = row.querySelector('.cantidad-input');
+        inputCant.setAttribute('data-precio', precio);
+        inputCant.setAttribute('data-stock-max', stock);
+
+        configurarEventosCantidad(inputCant);
+        totalFormsInput.value = count + 1;
+        actualizarTotalGlobal();
+    }
+
+    function eliminarFilaNueva(btn) {
+        btn.closest('tr').remove();
+        actualizarTotalGlobal();
+        document.getElementById('id_detalles_set-TOTAL_FORMS').value = document.querySelectorAll('#tabla-detalles tbody tr').length;
+    }
+
+    function eliminarFilaExistente(btn) {
+        const row = btn.closest('tr');
+        const checkboxDelete = row.querySelector('input[type="checkbox"][name*="DELETE"]');
+
+        Swal.fire({
+            ...swalConfig,
+            title: '¿Remover producto?',
+            text: "Se marcará para eliminación al guardar los cambios.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, remover'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (checkboxDelete) {
+                    checkboxDelete.checked = true;
+                    row.style.display = 'none';
+                    row.classList.remove('fila-detalle-existente');
+
+                    const inputCant = row.querySelector('.cantidad-input');
+                    if (inputCant) inputCant.classList.remove('stock-insuficiente');
+
+                    actualizarTotalGlobal();
+                }
+            }
+        });
+    }
+
+    function actualizarTotalGlobal() {
+        let total = 0;
+        document.querySelectorAll('#tabla-detalles tbody tr:not([style*="display: none"]) .cantidad-input').forEach(input => {
+            const precio = parseFloat(input.getAttribute('data-precio')) || 0;
+            const cant = parseFloat(input.value) || 0;
+            total += (precio * cant);
+        });
+        document.getElementById('gran-total').innerText = `$ ${total.toFixed(0)}`;
+    }
+
+    function confirmarEdicion() {
+        const filasActivas = document.querySelectorAll('#tabla-detalles tbody tr:not([style*="display: none"])');
+        const erroresStock = document.querySelectorAll('#tabla-detalles tbody tr:not([style*="display: none"]) .stock-insuficiente').length;
+
+        if (erroresStock > 0) {
+            Swal.fire({
+                ...swalConfig,
+                icon: 'error',
+                title: 'Error de Stock',
+                text: 'Corrige las cantidades marcadas en rojo que superan nuestras existencias.'
+            });
+            return;
+        }
+
+        if (filasActivas.length === 0) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Pedido Vacío', text: 'La orden debe contener como mínimo un producto.'});
+            return;
+        }
+
+        let cantidadesValidas = true;
+        filasActivas.forEach(fila => {
+            const cantInput = fila.querySelector('.cantidad-input');
+            const cant = cantInput ? parseFloat(cantInput.value) : 0;
+            if (isNaN(cant) || cant <= 0) cantidadesValidas = false;
+        });
+
+        if (!cantidadesValidas) {
+            Swal.fire({...swalConfig, icon: 'warning', title: 'Cantidades Inválidas', text: 'Todos los productos activos deben tener cantidades superiores a 0.'});
+            return;
+        }
+
+        Swal.fire({
+            ...swalConfig,
+            title: '¿Actualizar Pedido?',
+            text: "Se guardarán las modificaciones en la base de datos.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, guardar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('formEditarVenta').submit();
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        inicializarContadorObservaciones();
+        precargarFilasExistentes();
+    });
+</script>
+{% endblock %}

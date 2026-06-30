@@ -108,6 +108,114 @@ def crear_venta(request):
 
 
 @login_required
+def editar_venta(request, id_venta):
+    """
+    Permite modificar una orden de venta activa (PENDIENTE, PREPARANDO o ENTREGADA).
+    Si está PAGADA o CANCELADA no se puede modificar.
+    Si el pedido estaba ENTREGADO y se añaden nuevos productos o se aumenta la cantidad,
+    el estado cambia automáticamente a PENDIENTE.
+    """
+    venta = get_object_or_404(Venta, id_venta=id_venta)
+    rol_usuario = request.user.rol_fk_usuario.rol
+
+    # Restricción absoluta: Ventas cerradas o anuladas no se editan
+    if venta.estado_pago in ['PAGADA', 'CANCELADA']:
+        messages.error(request,
+                       f"La venta #{venta.id_venta} ya se encuentra {venta.estado_pago.lower()} y no puede ser modificada.")
+        return redirect('lista_ventas')
+
+    productos = Producto.objects.filter(estado_producto=True)
+
+    if request.method == 'POST':
+        form = VentaForm(request.POST, instance=venta)
+        formset = DetalleVentaFormSet(request.POST, instance=venta, prefix='detalles_set')
+
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # Guardado en memoria para evaluar cambios en los detalles antes de impactar
+                    venta_editada = form.save(commit=False)
+
+                    # Bandera para identificar si se requiere volver el pedido a PENDIENTE
+                    requiere_reversion_estado = False
+
+                    # Mapeamos cantidades previas de los detalles guardados para el control estricto de stock de ADMIN/CAJERO
+                    cantidades_anteriores = {d.id_producto_fk_det_venta_id: d.cantidad for d in venta.detalles.all()}
+
+                    # Procesamos las instancias del formset antes de impactar en la BD
+                    detalles = formset.save(commit=False)
+
+                    # Evaluar registros eliminados en el formulario
+                    for objeto_eliminado in formset.deleted_objects:
+                        if rol_usuario in ['ADMIN', 'CAJERO']:
+                            # Si es Admin/Cajero devolvemos el stock al almacén de forma inmediata
+                            prod = objeto_eliminado.id_producto_fk_det_venta
+                            prod.cant_exist_producto += objeto_eliminado.cantidad
+                            prod.save()
+                        objeto_eliminado.delete()
+
+                    # Evaluar inserciones y modificaciones de cantidades
+                    for detalle in detalles:
+                        producto = detalle.id_producto_fk_det_venta
+                        cant_anterior = cantidades_anteriores.get(producto.id_producto, 0)
+
+                        # Si la cantidad nueva supera la anterior, evaluamos el cambio de estado si estaba ENTREGADO
+                        if detalle.cantidad > cant_anterior:
+                            if venta.estado_pedido == 'ENTREGADO':
+                                requiere_reversion_estado = True
+
+                        # Sincronización del stock físico en tiempo real solo si el rol administrador o cajero opera la edición
+                        if rol_usuario in ['ADMIN', 'CAJERO']:
+                            diferencia = detalle.cantidad - cant_anterior
+                            if diferencia > 0:  # Solicita más unidades de este producto
+                                if producto.cant_exist_producto < diferencia:
+                                    raise ValueError(
+                                        f"Stock insuficiente para {producto.nombre_producto}. Disponible adicional: {producto.cant_exist_producto}")
+                                producto.cant_exist_producto -= diferencia
+                            elif diferencia < 0:  # Disminuyó la cantidad original
+                                producto.cant_exist_producto += abs(diferencia)
+                            producto.save()
+
+                        # Recalcular subtotal de la línea de venta
+                        detalle.sub_total = producto.valor_unitario_product * detalle.cantidad
+                        detalle.save()
+
+                    # Aplicar reversión de estado si se agregaron nuevos componentes a un pedido entregado
+                    if requiere_reversion_estado:
+                        venta_editada.estado_pedido = 'PENDIENTE'
+
+                    # CORRECCIÓN DE LA SUMA GLOBAL: Recorremos los registros grabados reales asociados a la venta
+                    total_calculado = 0
+                    for d_actualizado in venta_editada.detalles.all():
+                        total_calculado += d_actualizado.sub_total
+
+                    # Actualizar total de la venta global
+                    venta_editada.total_venta = total_calculado
+                    venta_editada.save()
+
+                    messages.success(request, f"Venta #{venta_editada.id_venta} modificada correctamente.")
+                    return redirect('lista_ventas')
+
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Error en base de datos al editar: {str(e)}")
+        else:
+            for error in form.non_field_errors(): messages.error(request, error)
+            for field in form:
+                for error in field.errors: messages.error(request, f"{field.label}: {error}")
+    else:
+        form = VentaForm(instance=venta)
+        formset = DetalleVentaFormSet(instance=venta, prefix='detalles_set')
+
+    return render(request, 'ventas/editar.html', {
+        'form': form,
+        'formset': formset,
+        'productos': productos,
+        'venta': venta
+    })
+
+@login_required
 def detalle_venta(request, id_venta):
     """ Muestra la información completa de la venta y sus productos """
     venta = get_object_or_404(Venta, id_venta=id_venta)

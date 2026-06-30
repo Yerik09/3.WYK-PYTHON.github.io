@@ -163,6 +163,13 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
+                                {# ACCIÓN: Editar (Solo si no está PAGADA ni CANCELADA) #}
+                                {% if v.estado_pago != 'PAGADA' and v.estado_pago != 'CANCELADA' %}
+                                    <a href="{% url 'editar_venta' v.id_venta %}" class="btn-action" style="color: #f5a623;" title="Editar Venta">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                {% endif %}
+
                                 {# ACCIÓN: Entregar (Aparece si está PENDIENTE y el usuario es MESERO o ADMIN) #}
                                 {% if v.estado_pedido == 'PENDIENTE' and v.estado_pago == 'PENDIENTE' %}
                                     {% if user.rol_fk_usuario.rol == 'MESERO' or user.rol_fk_usuario.rol == 'ADMIN' %}
