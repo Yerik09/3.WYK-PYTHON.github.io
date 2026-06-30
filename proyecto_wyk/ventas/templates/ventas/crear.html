@@ -225,12 +225,12 @@
                     </thead>
                     <tbody>
                         {% for pr in productos %}
-                        <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}" data-precio="{{ pr.valor_unitario_product }}" data-stock="{{ pr.cant_exist_producto }}">
+                        <tr class="fila-seleccionable" data-id="{{ pr.id_producto }}" data-nombre="{{ pr.nombre_producto }}" data-precio="{{ pr.valor_unitario_product }}" data-stock="{{ pr.cant_real_disponible }}">
                             <td class="text-center text-gold">#{{ pr.id_producto }}</td>
                             <td class="text-white">{{ pr.nombre_producto }}</td>
                             <td class="text-center text-gold fw-bold">$ {{ pr.valor_unitario_product }}</td>
                             <td class="text-center">
-                                <span class="badge-nivel">{{ pr.cant_exist_producto }}</span>
+                                <span class="badge-nivel">{{ pr.cant_real_disponible }}</span>
                                 <span class="unit-subtitle">unidades</span>
                             </td>
                         </tr>
@@ -251,7 +251,6 @@
 
     // --- CONTADOR EN TIEMPO REAL INTEGRAL PARA OBSERVACIONES (MAX 200) ---
     function inicializarContadorObservaciones() {
-        // Buscamos cualquier input o textarea que esté dentro de nuestro contenedor de observaciones
         const contenedor = document.getElementById('contenedor-observaciones');
         if (!contenedor) return;
 
@@ -266,7 +265,6 @@
                 contadorSpan.innerText = longitud;
             };
 
-            // Escuchar todos los eventos posibles del elemento para evitar retrasos
             textareaDesc.addEventListener('input', actualizarContador);
             textareaDesc.addEventListener('keyup', actualizarContador);
             textareaDesc.addEventListener('change', actualizarContador);
@@ -283,7 +281,6 @@
         }
     }
 
-    // Inicializar inmediatamente al cargar el documento
     document.addEventListener("DOMContentLoaded", inicializarContadorObservaciones);
     window.addEventListener("load", inicializarContadorObservaciones);
 
@@ -306,7 +303,6 @@
     });
 
     function agregarFilaProducto(id, precio, stock) {
-        // --- VALIDACIÓN DUPLICADOS ---
         const inputsExistentes = document.querySelectorAll('#tabla-detalles select');
         for (let select of inputsExistentes) {
             if (select.value == id) {
@@ -342,15 +338,12 @@
         inputCant.setAttribute('data-precio', precio);
         inputCant.setAttribute('data-stock-max', stock);
 
-        // --- BLOQUEO DE TECLAS (MENOS, PUNTOS, COMAS Y MÁXIMO 3 CARACTERES) ---
         inputCant.addEventListener('keydown', function(e) {
             const teclasEspeciales = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Enter'];
-
             if (e.key === '-' || e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
                 e.preventDefault();
                 return;
             }
-
             if (!teclasEspeciales.includes(e.key) && this.value.length >= 3) {
                 e.preventDefault();
             }
@@ -432,12 +425,10 @@
             return;
         }
 
-        // --- VALIDACIÓN DE CANTIDADES VACÍAS O MENORES/IGUALES A 0 ---
         let detallesValidos = true;
         filas.forEach(fila => {
             const cantInput = fila.querySelector('input[name*="cantidad"]');
             const cant = cantInput ? parseFloat(cantInput.value) : 0;
-
             if (isNaN(cant) || cant <= 0) {
                 detallesValidos = false;
             }
