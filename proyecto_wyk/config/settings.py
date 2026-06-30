@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*', '.railway.app']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 # Application definition
 
@@ -84,13 +84,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# Si estás en tu PC local (donde no existe DATABASE_URL), usará tus variables del .env
+# Database
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
 if os.environ.get('DATABASE_URL'):
     # Configuración para producción (Railway)
-    # dj_database_url auto-detectará si es MySQL o Postgres según lo que crees en Railway
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600
+            conn_max_age=600,
+            engine='django.db.backends.postgresql'
         )
     }
 else:
@@ -179,7 +183,3 @@ LOGOUT_REDIRECT_URL = 'login'
 CSRF_TRUSTED_ORIGINS = [
     'https://3wyk-pythongithubio-production.up.railway.app',
 ]
-
-# Si Railway genera un dominio estático alternativo, lo agregamos de forma dinámica para evitar bloqueos de CSRF
-if os.environ.get('RAILWAY_STATIC_URL'):
-    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ.get('RAILWAY_STATIC_URL')}")
