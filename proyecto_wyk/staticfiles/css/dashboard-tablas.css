@@ -1,0 +1,303 @@
+/* -----------------------------------------------------------
+   SISTEMA DE TABLAS INDEPENDIENTE - WYK EXPRESS (LIMPIO)
+   ----------------------------------------------------------- */
+
+:root {
+    --primary-color: #f5a623;
+    --primary-color-dim: #bd7a13;
+    --background-primary: #0f0600;
+    --background-secondary: #1a0a00;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.4);
+    --border-radius-lg: 22px;
+    --shadow-premium: 0 15px 35px rgba(0, 0, 0, 0.6);
+    --transition: all 0.3s ease;
+
+    /* NUEVO COLOR CAFÉ PARA EL BOTÓN */
+    --btn-coffee: #3d1c02;
+}
+
+html, body, .app, .main-content, .content-wrapper, .app-content {
+    overflow: visible !important;
+    height: auto !important;
+    background-color: var(--background-primary);
+}
+
+.container-custom {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: 0;
+}
+
+/* --- HEADER ORIGINAL (TAMAÑO RESTAURADO) --- */
+.header {
+    background-color: var(--primary-color-dim);
+    padding: 25px 35px;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 30px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 100%;
+
+    position: -webkit-sticky;
+    position: sticky;
+    top: 15px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    background-color: rgba(189, 122, 19, 0.95) !important;
+
+    /* Posicionamiento del botón */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header .s { font-size: 22px; color: white; font-weight: 600; }
+.header .n { color: #ffffff; font-weight: 800; }
+
+/* --- BOTÓN CAFÉ CON LETRA BLANCA --- */
+.btn-nuevo-header {
+    background-color: var(--btn-coffee);
+    color: #ffffff !important; /* LETRA BLANCA */
+    font-weight: 800;
+    border-radius: 12px;
+    padding: 12px 24px;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: var(--transition);
+    border: 1px solid rgba(245, 166, 35, 0.4); /* BORDE DORADO SUTIL */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.btn-nuevo-header:hover {
+    background-color: #5a2a04; /* Café más claro */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    border-color: var(--primary-color);
+}
+
+/* TARJETA Y TABLA */
+.card-wyk-table {
+    background-color: var(--background-secondary) !important;
+    border-radius: var(--border-radius-lg);
+    padding: 20px;
+    border: 1px solid rgba(245, 166, 35, 0.15);
+    box-shadow: var(--shadow-premium);
+    display: table;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 500px;
+}
+
+.table-wyk {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-wyk thead tr {
+    background: linear-gradient(90deg, #2a1200 0%, #4d260a 100%);
+}
+
+.table-wyk th {
+    color: var(--primary-color);
+    padding: 15px 25px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.text-center { text-align: center !important; }
+.text-white { color: #ffffff !important; }
+.fw-bold { font-weight: 700 !important; }
+
+.table-wyk thead th:first-child { border-radius: 12px 0 0 12px; }
+.table-wyk thead th:last-child { border-radius: 0 12px 12px 0; }
+
+.table-wyk td {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 15px 25px;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    white-space: nowrap;
+}
+
+.badge-nivel {
+    background: transparent;
+    color: var(--primary-color);
+    border: 1px solid rgba(245, 166, 35, 0.4);
+    padding: 4px 15px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+.btn-action {
+    width: 35px; height: 35px;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: white; transition: var(--transition);
+    border: none; cursor: pointer;
+    margin-right: 8px;
+}
+
+.btn-action:hover { background: var(--primary-color); color: #000; }
+
+/* EVITAR MOVIMIENTO POR SWEETALERT */
+body.swal2-shown {
+    padding-right: 0 !important;
+}
+
+/* --- ESTILOS FILTRO MODAL (CHIPS) --- */
+.btn-filtro-header {
+    background-color: transparent;
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: var(--transition);
+    cursor: pointer;
+    margin-right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-filtro-header:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.modal-content-wyk {
+    background-color: var(--background-secondary) !important;
+    border: 1px solid var(--primary-color);
+    border-radius: var(--border-radius-lg);
+}
+
+.modal-header-wyk {
+    border-bottom: 1px solid rgba(245, 166, 35, 0.2);
+    padding: 20px 25px;
+}
+
+.chip {
+    display: inline-block;
+    font-size: 0.9rem;
+    padding: 8px 18px;
+    border-radius: 25px;
+    background-color: #2a1200; /* Café oscuro */
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: var(--transition);
+    margin: 5px;
+    border: 1px solid rgba(245, 166, 35, 0.1);
+    position: relative;
+    user-select: none;
+}
+
+.chip:hover {
+    transform: translateY(-2px);
+    background-color: #3d1c02;
+    color: #fff;
+}
+
+/* Estado seleccionado (Dorado WYK) */
+.chip.active {
+    background-color: var(--primary-color) !important;
+    color: #000 !important;
+    font-weight: 700;
+    padding-left: 32px; /* Espacio para el check */
+    box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+}
+
+/* Check dentro del chip seleccionado */
+.chip.active::before {
+    content: "✔";
+    font-size: 0.8rem;
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* --- PERSONALIZACIÓN DE LOS COLORES DEL SWITCH (GLOBAL) --- */
+.form-switch .form-check-input {
+    background-color: #ff4444 !important;
+    border-color: #ff4444 !important;
+    cursor: pointer;
+    width: 3em !important;
+    height: 1.5em !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #00c851 !important;
+    border-color: #00c851 !important;
+}
+
+.form-check-input:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.text-status-toggle {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+}
+
+.text-active { color: #00c851; }
+.text-inactive { color: #ff4444; }
+
+.switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- COMPONENTE: BUSCADOR DORADO GLOBAL --- */
+.search-container .input-group {
+    border: 1px solid var(--primary-color) !important;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.search-container .input-group-text {
+    border: none !important;
+    background: transparent !important;
+    color: var(--primary-color) !important;
+    padding-left: 15px;
+}
+
+#inputBusqueda {
+    border: none !important;
+    background: transparent !important;
+    color: white !important;
+    width: 180px;
+    transition: all 0.3s ease;
+    box-shadow: none !important;
+}
+
+#inputBusqueda:focus {
+    width: 260px;
+}
+
+#inputBusqueda::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 768px) {
+    #inputBusqueda { width: 120px; }
+    #inputBusqueda:focus { width: 160px; }
+}

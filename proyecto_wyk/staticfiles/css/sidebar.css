@@ -1,0 +1,258 @@
+/* C:\xampp\htdocs\3.WYK-PYTHON.github.io\proyecto_wyk\static\css\sidebar.css */
+
+/* VARIABLES PANADERÍA UNIFICADAS */
+:root {
+    --primary: #0b0500;
+    --accent: #f59e0b;
+    --bg-dark: #0b0500;
+    --text-white: #ffffff;
+    --danger: #ef4444;
+    --danger-hover: rgba(239, 68, 68, 0.1);
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 80px;
+    --hover-color: rgba(245, 158, 11, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    scrollbar-gutter: stable;
+}
+
+body {
+    background-color: var(--bg-dark);
+    min-height: 100vh;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* SIDEBAR - CONTENEDOR PRINCIPAL */
+.sidebar {
+    width: var(--sidebar-collapsed);
+    min-width: var(--sidebar-collapsed);
+    height: 100vh;
+    background-color: var(--primary);
+    color: var(--text-white);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1100;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.sidebar.active {
+    width: var(--sidebar-width);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* CABECERA DEL SIDEBAR - FIJA */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    height: 100px;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.toggle-btn-sidebar {
+    background: none;
+    border: none;
+    color: var(--text-white);
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s;
+    width: var(--sidebar-collapsed);
+    min-width: var(--sidebar-collapsed);
+}
+
+.toggle-btn-sidebar:hover {
+    color: var(--accent);
+}
+
+.sidebar-logo {
+    min-width: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar-logo img {
+    width: 50px;
+    height: auto;
+    object-fit: contain;
+}
+
+.sidebar-title h3 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+/* NAVEGACIÓN - SECCIÓN CON SCROLL DORADO */
+.sidebar-nav {
+    flex: 1;
+    padding: 10px 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 10px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: #d98c08;
+}
+
+/* ITEMS DE NAVEGACIÓN - ANCHO REDUCIDO */
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    color: var(--text-white);
+    text-decoration: none;
+    border-radius: 10px;
+    margin: 4px auto;
+    /* Reducido de 60px a 50px para ser menos ancho */
+    width: 50px;
+    transition: all 0.3s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.sidebar.active .nav-item {
+    justify-content: flex-start;
+    /* Ajuste para que se vea más centrado en el modo expandido */
+    width: calc(100% - 30px);
+    margin: 4px 15px;
+}
+
+.nav-item i {
+    /* Mantiene el área de click pero el icono se centra */
+    min-width: 50px;
+    font-size: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.nav-item span {
+    white-space: nowrap;
+    margin-left: 5px;
+    transition: opacity 0.2s;
+}
+
+.nav-item:hover {
+    background-color: var(--hover-color);
+    color: var(--accent);
+}
+
+.nav-item.active {
+    background-color: var(--accent);
+    color: #000 !important;
+    font-weight: 600;
+}
+
+.nav-section {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 20px 20px 10px;
+    color: var(--accent);
+    opacity: 0.6;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* PIE DE PÁGINA - FIJO */
+.sidebar-footer {
+    padding: 20px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.btn-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    margin: 0 auto;
+    /* Igualamos el ancho a los nav-items */
+    width: 50px;
+    color: #ff8a8a;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.sidebar.active .btn-logout {
+    justify-content: flex-start;
+    width: calc(100% - 30px);
+    margin: 0 15px;
+}
+
+.btn-logout i {
+    min-width: 50px;
+    display: flex;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.btn-logout span {
+    white-space: nowrap;
+    margin-left: 5px;
+}
+
+/* HOVER ROJO ESTILO CUADRADITO */
+.btn-logout:hover {
+    background-color: var(--danger-hover);
+    color: var(--danger);
+}
+
+/* LÓGICA DE VISIBILIDAD */
+.sidebar:not(.active) .sidebar-logo,
+.sidebar:not(.active) .sidebar-title,
+.sidebar:not(.active) .nav-item span,
+.sidebar:not(.active) .nav-section,
+.sidebar:not(.active) .btn-logout span {
+    display: none;
+}
+
+/* CONTENIDO PRINCIPAL */
+.main-content {
+    flex-grow: 1;
+    margin-left: var(--sidebar-collapsed);
+    width: calc(100% - var(--sidebar-collapsed));
+    background-color: var(--bg-dark);
+}
+
+.content-body {
+    padding: 30px;
+}
