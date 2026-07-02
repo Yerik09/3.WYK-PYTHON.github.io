@@ -47,6 +47,15 @@
         .text-detail { font-size: 0.8rem; color: rgba(255, 255, 255, 0.6); display: block; }
         .text-detail i { color: var(--primary-color); width: 18px; }
 
+        /* Ajuste unificado para truncar texto como en compras */
+        .truncate-text {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: help;
+        }
+
         .responsable-wrapper { display: flex; flex-direction: column; align-items: center; line-height: 1.3; }
         .responsable-name { color: #fff; font-weight: 600; font-size: 0.9rem; }
         .responsable-role { color: rgba(255, 255, 255, 0.5); font-size: 0.75rem; text-transform: uppercase; }
@@ -132,7 +141,9 @@
                         </td>
                         <td>
                             <span class="text-detail">
-                                <i class="fas fa-comment-alt"></i> {{ v.descripcion|default:"Sin observaciones" }}
+                                <div class="truncate-text" title="{{ v.descripcion|default:'Sin observaciones' }}">
+                                    <i class="fas fa-comment-alt"></i> {{ v.descripcion|default:"Sin observaciones" }}
+                                </div>
                             </span>
                         </td>
                         <td class="text-center highlight-gold">$ {{ v.total_venta|floatformat:0 }}</td>
@@ -333,7 +344,7 @@
 
         if (config.requirePass) {
             swalOptions.input = 'password';
-            swalOptions.inputAttributes = { placeholder: 'Contraseña de confirmación', autocapitalize: 'off' };
+            swalOptions.inputAttributes = { placeholder: 'Contraseña de confirmation', autocapitalize: 'off' };
         }
 
         Swal.fire(swalOptions).then((result) => {

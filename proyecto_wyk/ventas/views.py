@@ -131,7 +131,7 @@ def editar_venta(request, id_venta):
 
     productos = Producto.objects.filter(estado_producto=True)
 
-    # --- AGREGA ESTA LÓGICA PARA EL STOCK REAL ---
+    # --- LÓGICA PARA EL STOCK REAL ---
     for p in productos:
         apartado = DetalleVenta.objects.filter(
             id_producto_fk_det_venta=p,
@@ -139,19 +139,81 @@ def editar_venta(request, id_venta):
         ).exclude(id_venta_fk_det_venta=venta).aggregate(Sum('cantidad'))['cantidad__sum'] or 0
 
         p.cant_real_disponible = max(0, p.cant_exist_producto - apartado)
-    # ---------------------------------------------
 
     if request.method == 'POST':
-        # ... (el resto de tu código POST permanece igual)
         form = VentaForm(request.POST, instance=venta)
         formset = DetalleVentaFormSet(request.POST, instance=venta, prefix='detalles_set')
-        # ...
+
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # 1. Guardamos los cambios de la cabecera (Mesa, observaciones, etc.)
+                    venta_actualizada = form.save(commit=False)
+
+                    # NUEVO: Si el pedido estaba ENTREGADO, al editarlo vuelve a PENDIENTE
+                    if venta_actualizada.estado_pedido == 'ENTREGADO':
+                        venta_actualizada.estado_pedido = 'PENDIENTE'
+
+                    venta_actualizada.save()
+
+                    # 2. Guardamos los detalles (Nuevos, modificados o eliminados)
+                    detalles = formset.save(commit=False)
+                    total_calculado = 0
+
+                    # Procesamos las filas activas
+                    for detalle in detalles:
+                        producto = detalle.id_producto_fk_det_venta
+
+                        # Recalcular el stock máximo permitido de forma segura excluyendo la venta actual
+                        apartado_otros = DetalleVenta.objects.filter(
+                            id_producto_fk_det_venta=producto,
+                            id_venta_fk_det_venta__estado_pago='PENDIENTE'
+                        ).exclude(id_venta_fk_det_venta=venta).aggregate(Sum('cantidad'))['cantidad__sum'] or 0
+
+                        stock_real_disponible = producto.cant_exist_producto - apartado_otros
+
+                        if detalle.cantidad > stock_real_disponible:
+                            raise ValueError(
+                                f"No hay stock suficiente para {producto.nombre_producto}. (Disponible: {stock_real_disponible})")
+
+                        detalle.id_venta_fk_det_venta = venta_actualizada
+                        detalle.sub_total = producto.valor_unitario_product * detalle.cantidad
+                        total_calculado += detalle.sub_total
+                        detalle.save()
+
+                    # Gestionar las eliminaciones indicadas mediante el formset (DELETE)
+                    for obj in formset.deleted_objects:
+                        obj.delete()
+
+                    # 3. Recalcular el total final sumando todos los detalles vigentes en la BD
+                    total_final = \
+                    DetalleVenta.objects.filter(id_venta_fk_det_venta=venta_actualizada).aggregate(Sum('sub_total'))[
+                        'sub_total__sum'] or 0
+                    venta_actualizada.total_venta = total_final
+                    venta_actualizada.save()
+
+                    messages.success(request, f"Venta #{venta_actualizada.id_venta} actualizada correctamente.")
+                    return redirect('lista_ventas')
+            except ValueError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Error al actualizar la base de datos: {str(e)}")
+        else:
+            # Captura de errores de validación de Django
+            for error in form.non_field_errors(): messages.error(request, error)
+            for field in form:
+                for error in field.errors: messages.error(request, f"{field.label}: {error}")
+            for error in formset.non_form_errors(): messages.error(request, f"Detalle general: {error}")
+            for f in formset:
+                for field in f:
+                    for error in field.errors: messages.error(request, f"Fila ({field.label}): {error}")
     else:
         form = VentaForm(instance=venta)
         formset = DetalleVentaFormSet(instance=venta, prefix='detalles_set')
 
     return render(request, 'ventas/editar.html',
                   {'form': form, 'formset': formset, 'productos': productos, 'venta': venta})
+
 
 @login_required
 def detalle_venta(request, id_venta):

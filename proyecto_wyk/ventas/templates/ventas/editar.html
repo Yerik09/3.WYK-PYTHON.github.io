@@ -309,9 +309,11 @@
                     const inputCant = row.querySelector('input[name*="cantidad"]');
 
                     if (inputCant) {
-                        // Al estar editando, el stock máximo real disponible es el stock en bodega + lo que ya tenía reservado
                         const cantOriginal = parseFloat(inputCant.value) || 0;
-                        const stockMaximoPermitido = itemData.stock + cantOriginal;
+
+                        // CORRECCIÓN: Tu views.py ya envía en itemData.stock la suma correcta del inventario
+                        // libre más lo reservado por este pedido. Se asigna directo sin duplicar operaciones.
+                        const stockMaximoPermitido = itemData.stock;
 
                         inputCant.setAttribute('data-precio', itemData.precio);
                         inputCant.setAttribute('data-stock-max', stockMaximoPermitido);
@@ -356,7 +358,7 @@
                 ...swalConfig,
                 icon: 'warning',
                 title: 'Stock Insuficiente',
-                text: `Excedes las existencias físicas. Máximo disponible (incluyendo reserva): ${stockMax} u.`,
+                text: `Solo hay ${stockMax} unidades disponibles de este producto (incluyendo tu orden).`,
                 toast: true,
                 position: 'top-end',
                 timer: 4000,
